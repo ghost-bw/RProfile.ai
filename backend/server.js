@@ -21,6 +21,7 @@ app.use('/api/resume', require('./routes/resume'));
 app.use('/api/interview', require('./routes/interview'));
 app.use('/api/code', require('./routes/code'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/contact', require('./routes/contact'));
 
 app.get('/health', (req, res) => {
     const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';

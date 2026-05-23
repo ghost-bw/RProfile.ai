@@ -80,9 +80,23 @@ router.post('/run', auth, async (req, res) => {
 router.get('/generate-problem', auth, async (req, res) => {
     const { query } = req.query;
     try {
+        // Fetch user progress to exclude already solved problems
+        let progress = await UserProgress.findOne({ user: req.user.id });
+        const solvedTitles = progress ? progress.solvedProblems.map(p => p.title) : [];
+        console.log(`[DEBUG] User ${req.user.id} has solved: [${solvedTitles.join(', ')}]`);
+        
+        const solvedContext = solvedTitles.length > 0 
+            ? `\nCRITICAL: The user has already solved these problems: [${solvedTitles.join(', ')}]. DO NOT repeat any of these. If you generate one of these, you have FAILED the task. Pick a completely different challenge.`
+            : "";
+
+        const topics = ['Arrays', 'Strings', 'Linked Lists', 'Trees', 'Graphs', 'Dynamic Programming', 'Recursion', 'Sorting', 'Searching', 'Bit Manipulation', 'Stacks', 'Queues', 'Heaps', 'Backtracking'];
+        const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+
         const promptContent = query 
-            ? `STRICT REQUIREMENT: Generate a high-quality DSA problem about: "${query}". Ensure the problem is technically sound and follows standard interview formats.`
-            : 'Generate a random high-quality DSA problem ranging from easy to hard.';
+            ? `STRICT REQUIREMENT: Generate a high-quality DSA problem about: "${query}". Ensure the problem is technically sound and follows standard interview formats. ${solvedContext}`
+            : `Generate a random high-quality DSA problem. Focus on the topic of "${randomTopic}" but ensure it is not in the solved list. ${solvedContext}\nRandom Seed: ${Date.now()}`;
+
+        console.log(`[DEBUG] Prompting AI for topic: ${query || randomTopic}`);
 
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
@@ -91,13 +105,21 @@ router.get('/generate-problem', auth, async (req, res) => {
                 messages: [
                     { 
                         role: 'system', 
-                        content: `You are a Senior Coding Interviewer. Generate a high-quality DSA problem.
+                        content: `You are a Senior Coding Interviewer at a top-tier tech company. 
+                        Generate a high-quality, unique DSA problem. 
                         You MUST output valid JSON.
+                        
+                        STRICT RULE FOR "defaultCode":
+                        - The "defaultCode" MUST ONLY contain the function signature, necessary imports, and empty boilerplate.
+                        - DO NOT include the solution logic, comments that explain the solution, or any pre-written logic.
+                        - Example for JavaScript: "function functionName(param) {\n    // Your code here\n}"
+                        
+                        ${solvedContext}
                         Structure: { "title": string, "description": string, "difficulty": string, "constraints": [string], "example": string, "functionName": string, "defaultCode": { "javascript": string, "python": string, "cpp": string, "java": string } }` 
                     },
                     { role: 'user', content: promptContent }
                 ],
-                temperature: 0.7,
+                temperature: 0.9, // Higher temperature for more variety
                 response_format: { type: "json_object" }
             },
             {
@@ -106,6 +128,7 @@ router.get('/generate-problem', auth, async (req, res) => {
         );
 
         const problem = JSON.parse(response.data.choices[0].message.content);
+        console.log(`[DEBUG] AI Generated: "${problem.title}"`);
         res.json(problem);
     } catch (err) {
         console.error('AI ERROR:', err.response?.data || err.message);
@@ -125,6 +148,7 @@ router.post('/evaluate', auth, async (req, res) => {
     const { problem, code, language, isSubmit } = req.body;
 
     try {
+        console.log(`[DEBUG] Evaluating submission for problem: "${problem.title}" (isSubmit: ${isSubmit})`);
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
@@ -168,16 +192,26 @@ router.post('/evaluate', auth, async (req, res) => {
                 }
                 const alreadySolved = progress.solvedProblems.find(p => p.title === problem.title);
                 if (!alreadySolved) {
+                    // Normalize difficulty to title case (Easy, Medium, Hard)
+                    let difficulty = problem.difficulty || 'Medium';
+                    difficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+                    if (!['Easy', 'Medium', 'Hard'].includes(difficulty)) difficulty = 'Medium';
+
                     progress.solvedProblems.push({
                         title: problem.title,
-                        difficulty: problem.difficulty || 'Medium',
+                        difficulty: difficulty,
                         solvedAt: new Date()
                     });
                     await progress.save();
+                    console.log(`[DEBUG] Problem "${problem.title}" marked as SOLVED for user ${req.user.id}`);
+                } else {
+                    console.log(`[DEBUG] Problem "${problem.title}" already in solved list for user ${req.user.id}`);
                 }
             } catch (progErr) {
                 console.error('PROGRESS UPDATE ERROR:', progErr.message);
             }
+        } else if (isSubmit) {
+            console.log(`[DEBUG] Submission FAILED for problem: "${problem.title}" (Score: ${evaluation.score}, passedAll: ${evaluation.passedAll})`);
         }
 
         res.json(evaluation);
@@ -216,21 +250,22 @@ router.get('/generate-aptitude', auth, async (req, res) => {
                 messages: [
                     { 
                         role: 'system', 
-                        content: `You are a High-Accuracy Exam Auditor. 
+                        content: `You are a High-Accuracy Senior Technical Recruiter. 
                         TASK: Generate 20 technical aptitude MCQs in JSON format.
                         
-                        PRECISION RULES:
-                        1. The "correctAnswer" index (0-3) MUST point to the EXACT correct string in the "options" array.
-                        2. Verify the logic: If the question is math, solve it. If verbal, check grammar.
-                        3. CATEGORIES: Quantitative (30%), Logical (30%), Verbal (25%), Business (15%).
+                        PRECISION & DIFFICULTY RULES:
+                        1. DIFFICULTY: Questions MUST be at a competitive level (e.g., GMAT, CAT, or Tier-1 Tech Company Entrance). Avoid simple arithmetic.
+                        2. CONTEXT: The user is applying for roles related to: "${jobRoleContext}". Tailor questions to this technical background where possible.
+                        3. MATH VARIETY: For Quantitative questions, focus on: Probability, Combinatorics, Advanced Algebra, Data Sufficiency, and Complex Logic. Avoid repetitive "percentage" or "simple interest" questions.
+                        4. The "correctAnswer" index (0-3) MUST point to the EXACT correct string in the "options" array.
+                        5. The "explanation" MUST start by explicitly stating the correct option text.
                         
                         OUTPUT STRUCTURE:
-                        { "questions": [ { "question": "", "options": ["A","B","C","D"], "correctAnswer": 0-3, "topic": "", "explanation": "" } ] }
-                        Ensure the output is a valid JSON object.` 
+                        { "questions": [ { "question": "", "options": ["A","B","C","D"], "correctAnswer": 0-3, "topic": "", "explanation": "" } ] }` 
                     },
-                    { role: 'user', content: `Generate 20 diverse, unique MCQs. Double-check that for EVERY question, the correctAnswer index correctly matches the true answer among the options.` }
+                    { role: 'user', content: `Generate 20 unique, high-difficulty MCQs. Ensure the mathematical questions involve complex multi-step reasoning. Random Seed: ${Math.random() * 1000000}` }
                 ],
-                temperature: 0.4, // Lower temperature for higher accuracy/determinism
+                temperature: 0.7, // Increased for better variety
                 response_format: { type: "json_object" }
             },
             {
@@ -247,27 +282,52 @@ router.get('/generate-aptitude', auth, async (req, res) => {
         // CLEANING & VERIFICATION LAYER
         const verifiedQuestions = rawQuestions.map(q => {
             let correctIdx = q.correctAnswer;
+            const options = q.options || [];
+            const explanation = (q.explanation || "").toLowerCase();
             
-            // 1. Normalize index (Handle letters or 1-based indexing)
+            // 1. Handle non-numeric or string indices
             if (typeof correctIdx === 'string') {
                 const map = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, '1': 0, '2': 1, '3': 2, '4': 3, '0': 0 };
                 const clean = correctIdx.trim().toUpperCase();
                 correctIdx = map[clean] !== undefined ? map[clean] : (parseInt(clean) || 0);
             }
             
-            // 2. Cross-reference Explanation with Options (Safety check)
-            // If the explanation explicitly mentions an option text, ensure correctIdx points to it
-            const explanation = (q.explanation || "").toLowerCase();
-            const options = q.options || [];
-            
-            options.forEach((opt, idx) => {
-                if (opt && explanation.includes(opt.toLowerCase()) && explanation.length > 5) {
-                    // Only override if the explanation is very specific about the answer string
-                    if (!explanation.includes(options[correctIdx]?.toLowerCase())) {
-                        correctIdx = idx;
+            // 2. Cross-reference Explanation with Options (Enhanced Safety check)
+            // Look for patterns like "is [option text]" or "answer is [option text]"
+            let foundMatch = false;
+            for (let i = 0; i < options.length; i++) {
+                const optText = options[i].toLowerCase();
+                // Check if the explanation specifically highlights this option text as the answer
+                const patterns = [
+                    `answer is ${optText}`,
+                    `correct is ${optText}`,
+                    `choice is ${optText}`,
+                    `is ${optText}.`,
+                    `is ${optText},`,
+                    `is: ${optText}`,
+                    `the answer is ${optText}`
+                ];
+                
+                if (patterns.some(p => explanation.includes(p))) {
+                    correctIdx = i;
+                    foundMatch = true;
+                    break;
+                }
+            }
+
+            // 3. Fallback: If no strong pattern match, do a simple includes check but prioritize longer strings to avoid sub-word matches
+            if (!foundMatch) {
+                const sortedOptions = options
+                    .map((text, index) => ({ text: text.toLowerCase(), index }))
+                    .sort((a, b) => b.text.length - a.text.length);
+
+                for (const opt of sortedOptions) {
+                    if (opt.text.length > 2 && explanation.includes(opt.text)) {
+                        correctIdx = opt.index;
+                        break;
                     }
                 }
-            });
+            }
 
             return {
                 ...q,

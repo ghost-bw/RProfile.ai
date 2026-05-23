@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { 
     Upload as UploadIcon, 
@@ -35,6 +35,7 @@ const Dashboard = () => {
     const [showAllSessions, setShowAllSessions] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [profileData, setProfileData] = useState({ name: '', password: '' });
+    const [customPrompt, setCustomPrompt] = useState('');
     const { sharedFile, setSharedFile } = useFile();
     const navigate = useNavigate();
 
@@ -42,15 +43,14 @@ const Dashboard = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const headers = { 'x-auth-token': token };
         setLoading(true);
 
         try {
             const [userRes, sessionsRes, resumeRes, analyticsRes] = await Promise.allSettled([
-                axios.get('http://127.0.0.1:5000/api/auth/user', { headers }),
-                axios.get('http://127.0.0.1:5000/api/interview/sessions/all', { headers }),
-                axios.get('http://127.0.0.1:5000/api/resume/latest', { headers }),
-                axios.get('http://127.0.0.1:5000/api/analytics/user', { headers })
+                api.get('/auth/user'),
+                api.get('/interview/sessions/all'),
+                api.get('/resume/latest'),
+                api.get('/analytics/user')
             ]);
 
             if (userRes.status === 'fulfilled') {
@@ -89,11 +89,9 @@ const Dashboard = () => {
         formData.append('resume', fileToUpload);
 
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post('http://127.0.0.1:5000/api/resume/upload', formData, {
+            const res = await api.post('/resume/upload', formData, {
                 headers: { 
-                    'Content-Type': 'multipart/form-data',
-                    'x-auth-token': token
+                    'Content-Type': 'multipart/form-data'
                 }
             });
             setResumeText(res.data.originalText);
@@ -129,11 +127,7 @@ const Dashboard = () => {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post('http://127.0.0.1:5000/api/interview/start', 
-                {}, 
-                { headers: { 'x-auth-token': token } }
-            );
+            const res = await api.post('/interview/start', { customPrompt });
             navigate(`/interview/${res.data._id}`);
         } catch (err) {
             console.error(err);
@@ -151,10 +145,7 @@ const Dashboard = () => {
     const updateProfile = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
-            await axios.post('http://127.0.0.1:5000/api/auth/update-profile', profileData, {
-                headers: { 'x-auth-token': token }
-            });
+            await api.post('/auth/update-profile', profileData);
             alert('Profile updated successfully!');
             setShowProfileModal(false);
             fetchDashboardData();
@@ -345,6 +336,21 @@ const Dashboard = () => {
                                 <h3 className="text-xl font-bold mb-2 text-[#1E3A8A]">Detailed Analytics</h3>
                                 <p className="text-gray-500 text-sm">Track your performance trends and mastery across topics.</p>
                             </div>
+                        </div>
+
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                            <h2 className="text-2xl font-bold mb-6 flex items-center text-[#1E3A8A]">
+                                <PlayIcon className="mr-3 text-green-500 w-6 h-6" /> Custom Interview Focus (Optional)
+                            </h2>
+                            <p className="text-sm text-gray-500 mb-4 font-medium italic">
+                                Tell the AI what to focus on (e.g., "React and Frontend", "System Design", "Backend with Node.js").
+                            </p>
+                            <textarea
+                                value={customPrompt}
+                                onChange={(e) => setCustomPrompt(e.target.value)}
+                                placeholder="e.g., Focus on React, Redux, and CSS optimization..."
+                                className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition resize-none text-sm font-medium"
+                            ></textarea>
                         </div>
 
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">

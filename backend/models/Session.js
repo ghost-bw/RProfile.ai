@@ -21,6 +21,10 @@ const SessionSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    customPrompt: {
+        type: String,
+        default: ''
+    },
     type: {
         type: String,
         enum: ['interview', 'aptitude'],

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -111,14 +111,9 @@ const AnalyticsDashboard = () => {
     useEffect(() => {
         const fetchAllData = async () => {
             try {
-                const token = localStorage.getItem('token');
                 const [analyticsRes, codingRes] = await Promise.all([
-                    axios.get('http://127.0.0.1:5000/api/analytics/user', {
-                        headers: { 'x-auth-token': token }
-                    }),
-                    axios.get('http://127.0.0.1:5000/api/analytics/coding-stats', {
-                        headers: { 'x-auth-token': token }
-                    })
+                    api.get('/analytics/user'),
+                    api.get('/analytics/coding-stats')
                 ]);
                 setData(analyticsRes.data);
                 setCodingStats(codingRes.data);
@@ -135,10 +130,7 @@ const AnalyticsDashboard = () => {
         setLoadingRoadmap(true);
         setErrorMsg('');
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('http://127.0.0.1:5000/api/analytics/roadmap', {
-                headers: { 'x-auth-token': token }
-            });
+            const res = await api.get('/analytics/roadmap');
             setRoadmap(res.data.roadmap);
         } catch (err) {
             console.error('Error fetching roadmap:', err);
@@ -202,19 +194,49 @@ const AnalyticsDashboard = () => {
                         <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">Consistency</h3>
                         <div className="text-3xl font-black text-gray-900">{data?.metrics.consistency}%</div>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 group relative">
                         <div className="bg-purple-50 p-3 rounded-2xl w-fit mb-4">
                             <Target className="text-purple-600 w-6 h-6" />
                         </div>
                         <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">Strong Areas</h3>
                         <div className="text-3xl font-black text-gray-900">{data?.strongTopics.length}</div>
+                        
+                        {/* Tooltip for Strong Areas */}
+                        {data?.strongTopics && data.strongTopics.length > 0 && (
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-gray-900 text-white text-[11px] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none shadow-xl border border-white/10">
+                                <div className="font-bold mb-2 border-b border-white/10 pb-1 text-purple-400">Mastered Topics</div>
+                                <ul className="space-y-1">
+                                    {data.strongTopics.map((topic, i) => (
+                                        <li key={i} className="flex items-center">
+                                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full mr-2"></div>
+                                            {topic}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 group relative">
                         <div className="bg-red-50 p-3 rounded-2xl w-fit mb-4">
                             <BrainCircuit className="text-red-600 w-6 h-6" />
                         </div>
                         <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">Weak Areas</h3>
                         <div className="text-3xl font-black text-gray-900">{data?.weakTopics.length}</div>
+
+                        {/* Tooltip for Weak Areas */}
+                        {data?.weakTopics && data.weakTopics.length > 0 && (
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-gray-900 text-white text-[11px] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none shadow-xl border border-white/10">
+                                <div className="font-bold mb-2 border-b border-white/10 pb-1 text-red-400">Topics to Improve</div>
+                                <ul className="space-y-1">
+                                    {data.weakTopics.map((topic, i) => (
+                                        <li key={i} className="flex items-center">
+                                            <div className="w-1.5 h-1.5 bg-red-400 rounded-full mr-2"></div>
+                                            {topic}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 </div>
 

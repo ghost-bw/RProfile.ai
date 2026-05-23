@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { Award, Mail, Lock, User as UserIcon, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
@@ -61,7 +61,7 @@ const Login = () => {
 
         try {
             if (isVerifying) {
-                const res = await axios.post('http://127.0.0.1:5000/api/auth/verify-otp', {
+                const res = await api.post('/auth/verify-otp', {
                     email: formData.email,
                     otp: formData.otp
                 });
@@ -72,7 +72,7 @@ const Login = () => {
 
             if (isForgetPassword) {
                 if (isResetting) {
-                    const res = await axios.post('http://127.0.0.1:5000/api/auth/reset-password', {
+                    const res = await api.post('/auth/reset-password', {
                         email: formData.email,
                         otp: formData.otp,
                         newPassword: formData.newPassword
@@ -83,7 +83,7 @@ const Login = () => {
                     setIsResetting(false);
                     setMsg(successMsg);
                 } else {
-                    const res = await axios.post('http://127.0.0.1:5000/api/auth/forgot-password', {
+                    const res = await api.post('/auth/forgot-password', {
                         email: formData.email
                     });
                     setMsg(res.data.msg);
@@ -92,8 +92,8 @@ const Login = () => {
                 return;
             }
 
-            const url = isLogin ? 'http://127.0.0.1:5000/api/auth/login' : 'http://127.0.0.1:5000/api/auth/signup';
-            const res = await axios.post(url, formData);
+            const url = isLogin ? '/auth/login' : '/auth/signup';
+            const res = await api.post(url, formData);
             
             if (!isLogin) {
                 setIsVerifying(true);
@@ -117,7 +117,7 @@ const Login = () => {
     const googleSuccess = async (response) => {
         setLoading(true);
         try {
-            const res = await axios.post('http://127.0.0.1:5000/api/auth/google', {
+            const res = await api.post('/auth/google', {
                 tokenId: response.credential
             });
             localStorage.setItem('token', res.data.token);

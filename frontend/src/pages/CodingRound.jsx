@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from "@monaco-editor/react";
-import axios from 'axios';
+import api from '../api';
 import logo from '../assets/Gemini_Generated_Image_ga5zozga5zozga5z.png';
 import { 
     Play, 
@@ -44,13 +44,10 @@ const CodingRound = () => {
     const fetchProblem = async (query = "") => {
         setFetching(true);
         try {
-            const token = localStorage.getItem('token');
             const url = query 
-                ? `http://127.0.0.1:5000/api/code/generate-problem?query=${encodeURIComponent(query)}`
-                : 'http://127.0.0.1:5000/api/code/generate-problem';
-            const res = await axios.get(url, {
-                headers: { 'x-auth-token': token }
-            });
+                ? `/code/generate-problem?query=${encodeURIComponent(query)}`
+                : '/code/generate-problem';
+            const res = await api.get(url);
             setCurrentProblem(res.data);
             setCode(res.data.defaultCode[language] || res.data.defaultCode['javascript'] || "");
             setEvaluation(null);
@@ -77,14 +74,11 @@ const CodingRound = () => {
         setLoading(true);
         setEvaluation(null);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post('http://127.0.0.1:5000/api/code/evaluate', {
+            const res = await api.post('/code/evaluate', {
                 problem: currentProblem,
                 code,
                 language,
                 isSubmit: false
-            }, {
-                headers: { 'x-auth-token': token }
             });
             setEvaluation(res.data);
             setOutput(res.data.correctness);
@@ -98,14 +92,11 @@ const CodingRound = () => {
     const handleSubmitCode = async () => {
         setEvaluating(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post('http://127.0.0.1:5000/api/code/evaluate', {
+            const res = await api.post('/code/evaluate', {
                 problem: currentProblem,
                 code,
                 language,
                 isSubmit: true
-            }, {
-                headers: { 'x-auth-token': token }
             });
             setEvaluation(res.data);
             if (res.data.passedAll) {

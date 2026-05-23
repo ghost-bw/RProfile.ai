@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { Award, ArrowLeft, CheckCircle, AlertCircle, Info, RefreshCcw } from 'lucide-react';
 
@@ -10,14 +10,12 @@ const ATSCheck = () => {
     const [prevJd, setPrevJd] = useState("");
     const [loading, setLoading] = useState(true);
     const [analyzing, setAnalyzing] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchLatestResume = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const res = await axios.get('http://127.0.0.1:5000/api/resume/latest', {
-                    headers: { 'x-auth-token': token }
-                });
+                const res = await api.get('/resume/latest');
                 setResume(res.data);
                 // Check if there is a cached analysis in session storage
                 const cached = sessionStorage.getItem(`ats_analysis_${res.data._id}`);
@@ -42,10 +40,7 @@ const ATSCheck = () => {
 
         setAnalyzing(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post('http://127.0.0.1:5000/api/resume/analyze-jd', { jd }, {
-                headers: { 'x-auth-token': token }
-            });
+            const res = await api.post('/resume/analyze-jd', { jd });
             setAnalysis(res.data);
             setPrevJd(jd.trim());
             // Cache result

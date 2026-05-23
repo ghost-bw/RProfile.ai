@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { 
     Award, 
@@ -33,10 +33,7 @@ const AptitudeRound = () => {
     const fetchAptitudeQuestions = async () => {
         setAptitudeStatus('loading');
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('http://127.0.0.1:5000/api/code/generate-aptitude', {
-                headers: { 'x-auth-token': token }
-            });
+            const res = await api.get('/code/generate-aptitude');
             setAptitudeQuestions(res.data);
             setAptitudeStatus('active');
             setCurrentAptIndex(0);
@@ -116,13 +113,11 @@ const AptitudeRound = () => {
             });
 
             try {
-                await axios.post('http://127.0.0.1:5000/api/code/save-aptitude-result', {
+                await api.post('/code/save-aptitude-result', {
                     results,
                     score: finalScore,
                     totalQuestions: aptitudeQuestions.length,
                     topicsPerformance
-                }, {
-                    headers: { 'x-auth-token': token }
                 });
             } catch (saveErr) {
                 console.error("Failed to save results to backend, but showing summary anyway:", saveErr);

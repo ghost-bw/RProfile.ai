@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api';
 import { Send, MessageSquare, Mic, MicOff, ChevronLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -48,10 +48,7 @@ const Interview = () => {
             }
 
             try {
-                const token = localStorage.getItem('token');
-                const res = await axios.get(`http://127.0.0.1:5000/api/interview/${sessionId}`, {
-                    headers: { 'x-auth-token': token }
-                });
+                const res = await api.get(`/interview/${sessionId}`);
                 console.log('Session data received:', res.data);
                 setSession(res.data);
                 
@@ -131,13 +128,10 @@ const Interview = () => {
         setEvaluating(true);
 
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post('http://127.0.0.1:5000/api/interview/answer', {
+            const res = await api.post('/interview/answer', {
                 sessionId,
                 answer: currentAnswer,
                 responseTime
-            }, {
-                headers: { 'x-auth-token': token }
             });
 
             const evaluationContent = `${res.data.evaluation}\n\n**Suggestions:**\n${res.data.suggestions.map(s => `- ${s}`).join('\n')}`;

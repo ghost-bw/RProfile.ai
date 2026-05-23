@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![ResumePro Logo](./src/assets/Gemini_Generated_Image_ga5zozga5zozga5z.png)
+![ResumePro Logo](.frontend/src/assets/Gemini_Generated_Image_ga5zozga5zozga5z.png)
 
 **An intelligent platform combining AI-powered resume analysis, ATS optimization, mock interviews, and coding challenges to help professionals land their dream jobs.**
 

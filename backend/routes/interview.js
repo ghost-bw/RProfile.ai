@@ -37,6 +37,7 @@ const callGroq = async (systemPrompt, userPrompt) => {
 // @route   POST api/interview/start
 // @desc    Start multi-agent adaptive interview with memory
 router.post('/start', auth, async (req, res) => {
+    const { customPrompt } = req.body;
     try {
         console.log('Starting advanced interview for user:', req.user.id);
         const resume = await Resume.findOne({ userId: req.user.id }).sort({ createdAt: -1 });
@@ -55,6 +56,7 @@ router.post('/start', auth, async (req, res) => {
 
         const interviewerPrompt = `You are an elite Technical Interviewer Agent. 
         Your goal is to ask concise technical questions.
+        ${customPrompt ? `The user has requested a specific focus: "${customPrompt}". Prioritize questions related to this focus.` : ""}
         Return JSON format: { "question": string, "topic": string }
         Ensure the question is relevant to the user's field.`;
 
@@ -69,7 +71,8 @@ router.post('/start', auth, async (req, res) => {
             scores: [],
             confidences: [],
             currentStep: 0,
-            status: 'active'
+            status: 'active',
+            customPrompt: customPrompt || ''
         });
 
         const session = await newSession.save();
@@ -91,10 +94,12 @@ router.post('/answer', auth, async (req, res) => {
 
         const currentQuestion = session.questions[session.currentStep];
         const currentTopic = session.topicLabels[session.currentStep];
+        const customPrompt = session.customPrompt;
 
         // 1. Evaluator Agent: Scores the answer
         const evaluatorPrompt = `You are a Technical Evaluator Agent. 
         Analyze the answer for: logic correctness, technical depth, and accuracy.
+        ${customPrompt ? `Keep in mind the interview focus was: "${customPrompt}".` : ""}
         Return JSON: { "score": number (1-10), "confidence": number (1-10), "mistakes": [string], "topic": string }`;
 
         const evaluationResult = await callGroq(evaluatorPrompt, `Question: ${currentQuestion}\nAnswer: ${answer}`);
@@ -132,6 +137,7 @@ router.post('/answer', auth, async (req, res) => {
         if (session.questions.length < 5) {
             const interviewerPrompt = `You are an elite Technical Interviewer Agent. 
             Generate the NEXT question. Increase difficulty if the previous score was high, or provide a follow-up.
+            ${customPrompt ? `IMPORTANT: The interview focus is: "${customPrompt}". All questions MUST strictly adhere to this focus.` : ""}
             Use User Progress: Weak: ${progress.weakTopics.join(', ')}, Strong: ${progress.strongTopics.join(', ')}.
             Return JSON: { "question": string, "topic": string }`;
 

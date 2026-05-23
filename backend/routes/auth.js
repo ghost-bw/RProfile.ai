@@ -17,7 +17,7 @@ router.get('/user', auth, async (req, res) => {
         res.json(user);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -57,7 +57,7 @@ router.post('/signup', async (req, res) => {
         res.json({ msg: 'OTP sent to email. Please verify.' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -84,7 +84,7 @@ router.post('/verify-otp', async (req, res) => {
         res.json({ token });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -142,7 +142,7 @@ router.post('/update-profile', auth, async (req, res) => {
         res.json({ msg: 'Profile updated successfully' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -184,7 +184,7 @@ router.post('/login', async (req, res) => {
     } catch (err) {
         console.error('--- LOGIN ATTEMPT FAILED ---');
         console.error('Error Message:', err.message);
-        res.status(500).json({ msg: 'Server error', error: err.message });
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -211,7 +211,7 @@ router.post('/forgot-password', async (req, res) => {
         res.json({ msg: 'OTP sent to your email. Please verify.' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -237,7 +237,7 @@ router.post('/reset-password', async (req, res) => {
         res.json({ msg: 'Password reset successful. You can now login.' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
