@@ -78,8 +78,11 @@ router.post('/verify-otp', async (req, res) => {
         user.otpExpires = undefined;
         await user.save();
 
+        if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET is not defined in environment variables');
+        }
         const payload = { user: { id: user.id } };
-        const token = jwt.sign(payload, process.env.JWT_SECRET || 'your_jwt_secret_key_here', { expiresIn: '24h' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 
         res.json({ token });
     } catch (err) {
@@ -113,8 +116,11 @@ router.post('/google', async (req, res) => {
             await user.save();
         }
 
+        if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET is not defined in environment variables');
+        }
         const payload = { user: { id: user.id } };
-        const token = jwt.sign(payload, process.env.JWT_SECRET || 'your_jwt_secret_key_here', { expiresIn: '24h' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 
         res.json({ token });
     } catch (err) {
@@ -174,9 +180,12 @@ router.post('/login', async (req, res) => {
             }
         };
 
+        if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET is not defined in environment variables');
+        }
         const token = jwt.sign(
             payload, 
-            process.env.JWT_SECRET || 'your_jwt_secret_key_here', 
+            process.env.JWT_SECRET, 
             { expiresIn: '24h' }
         );
         console.log('--- LOGIN ATTEMPT SUCCESS --- Token generated');

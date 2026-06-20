@@ -5,6 +5,8 @@ const auth = require('../middleware/auth');
 const Session = require('../models/Session');
 const Resume = require('../models/Resume');
 const UserProgress = require('../models/UserProgress');
+const { generateEmbedding } = require('../utils/embeddings');
+const { queryResumeChunks } = require('../utils/pinecone');
 
 // Helper for Groq API
 const callGroq = async (systemPrompt, userPrompt) => {
@@ -52,7 +54,19 @@ router.post('/start', auth, async (req, res) => {
             await progress.save();
         }
 
-        const context = resume.originalText ? resume.originalText.substring(0, 3000) : "No detailed resume context.";
+        let context = "";
+        try {
+            const queryText = customPrompt || "core skills, projects, and work experience";
+            const queryVector = await generateEmbedding(queryText);
+            const matches = await queryResumeChunks(queryVector, 5, { userId: req.user.id });
+            context = matches.map(m => m.metadata.text).join('\n---\n');
+        } catch (pinErr) {
+            console.error('Pinecone context retrieval error, falling back to basic substring:', pinErr.message);
+            context = resume.originalText ? resume.originalText.substring(0, 3000) : "No detailed resume context.";
+        }
+        if (!context) {
+            context = resume.originalText ? resume.originalText.substring(0, 3000) : "No detailed resume context.";
+        }
 
         const interviewerPrompt = `You are an elite Technical Interviewer Agent. 
         Your goal is to ask concise technical questions.

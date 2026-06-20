@@ -7,7 +7,7 @@ const axios = require('axios');
 const auth = require('../middleware/auth');
 const Resume = require('../models/Resume');
 const { generateEmbedding, chunkText } = require('../utils/embeddings');
-const { upsertResumeChunks } = require('../utils/pinecone');
+const { upsertResumeChunks, queryResumeChunks } = require('../utils/pinecone');
 
 
 // Multer setup
@@ -128,6 +128,19 @@ router.post('/analyze-jd', auth, async (req, res) => {
         const resume = await Resume.findOne({ userId: req.user.id }).sort({ createdAt: -1 });
         if (!resume) return res.status(404).json({ msg: 'No resume found' });
 
+        let relevantContext = "";
+        try {
+            const jdEmbedding = await generateEmbedding(jd);
+            const matches = await queryResumeChunks(jdEmbedding, 5, { userId: req.user.id });
+            relevantContext = matches.map(m => m.metadata.text).join('\n---\n');
+        } catch (pinErr) {
+            console.error('Pinecone retrieval error, falling back to basic substring:', pinErr.message);
+            relevantContext = resume.originalText.substring(0, 4000);
+        }
+        if (!relevantContext) {
+            relevantContext = resume.originalText.substring(0, 4000);
+        }
+
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
@@ -141,7 +154,7 @@ router.post('/analyze-jd', auth, async (req, res) => {
                         Be very critical of missing skills, seniority levels, and domain experience.
                         Return JSON: { "score": number (0-100), "missingSkills": [string], "improvementTips": [string], "rationale": string }` 
                     },
-                    { role: 'user', content: `Resume Content: ${resume.originalText.substring(0, 4000)}\n\nJob Description: ${jd}` }
+                    { role: 'user', content: `Relevant Resume Content:\n${relevantContext}\n\nJob Description: ${jd}` }
                 ],
                 response_format: { type: "json_object" }
             },
