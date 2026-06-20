@@ -412,6 +412,43 @@ const CodingRound = () => {
                                                     <span className={`text-xl font-bold ${evaluation.score >= 7 ? 'text-green-500' : 'text-yellow-500'}`}>{evaluation.score}/10</span>
                                                 </div>
                                             </div>
+                                            {evaluation.testCases && evaluation.testCases.length > 0 && (
+                                                <div className="space-y-3">
+                                                    <span className="text-[10px] uppercase font-bold text-gray-500 block mb-1 tracking-widest">Test Cases ({evaluation.testCases.filter(t => t.passed).length}/{evaluation.testCases.length})</span>
+                                                    <div className="space-y-2">
+                                                        {evaluation.testCases.map((tc, idx) => (
+                                                            <div key={idx} className="bg-[#141414] p-3 rounded-lg border border-[#2A2A2A] text-xs">
+                                                                <div className="flex justify-between items-center mb-2">
+                                                                    <span className="font-bold text-gray-400">Test Case {idx + 1}</span>
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tc.passed ? 'bg-green-950/40 text-green-400 border border-green-900/40' : 'bg-red-950/40 text-red-400 border border-red-900/40'}`}>
+                                                                        {tc.passed ? 'PASSED' : 'FAILED'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-2 text-[11px] font-mono mb-2">
+                                                                    <div>
+                                                                        <span className="text-gray-500 block text-[9px] uppercase font-bold">Input</span>
+                                                                        <span className="text-gray-300 block bg-[#1A1A1A] p-1.5 rounded mt-0.5 whitespace-pre-wrap">{tc.input}</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-gray-500 block text-[9px] uppercase font-bold">Expected Output</span>
+                                                                        <span className="text-gray-300 block bg-[#1A1A1A] p-1.5 rounded mt-0.5 whitespace-pre-wrap">{tc.expectedOutput}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-[11px] font-mono mb-2">
+                                                                    <span className="text-gray-500 block text-[9px] uppercase font-bold">Actual Output</span>
+                                                                    <span className={`block p-1.5 rounded mt-0.5 whitespace-pre-wrap ${tc.passed ? 'bg-[#1A1A1A] text-green-400' : 'bg-red-900/10 text-red-400'}`}>{tc.actualOutput}</span>
+                                                                </div>
+                                                                {tc.explanation && (
+                                                                    <div className="text-[10px] text-gray-500 border-t border-[#222] pt-2 mt-2">
+                                                                        <span className="font-bold uppercase text-gray-600 block text-[8px] mb-0.5">Execution Trace</span>
+                                                                        {tc.explanation}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                             
                                             {evaluation.improvements?.length > 0 && !evaluation.passedAll && (
                                                 <div className="bg-yellow-900/5 border border-yellow-900/10 p-4 rounded-xl">

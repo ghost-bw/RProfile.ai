@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { PDFParse } = require('pdf-parse');
+const pdf = require('pdf-parse');
 const fs = require('fs');
 const axios = require('axios');
 const auth = require('../middleware/auth');
 const Resume = require('../models/Resume');
 const { generateEmbedding, chunkText } = require('../utils/embeddings');
+const { upsertResumeChunks } = require('../utils/pinecone');
+
 
 // Multer setup
 const upload = multer({ dest: 'uploads/' });
@@ -29,10 +31,8 @@ router.post('/upload', [auth, upload.single('resume')], async (req, res) => {
 
         const dataBuffer = fs.readFileSync(req.file.path);
         console.log('Parsing PDF...');
-        const parser = new PDFParse({ data: dataBuffer });
-        const data = await parser.getText();
+        const data = await pdf(dataBuffer);
         const text = data.text;
-        await parser.destroy();
         console.log('PDF parsed successfully. Text length:', text.length);
 
         // ATS Analysis using Groq
@@ -75,17 +75,22 @@ router.post('/upload', [auth, upload.single('resume')], async (req, res) => {
         }
         console.log('Embeddings generated for', embeddedChunks.length, 'chunks');
 
-        // Save to DB
+        // Save to DB (without vectors to keep MongoDB document size small)
         const newResume = new Resume({
             userId: req.user.id,
             originalText: text,
-            chunks: embeddedChunks,
+            chunks: embeddedChunks.map(c => ({ text: c.text })),
             atsScore: atsAnalysis.score || 70,
             improvementTips: atsAnalysis.tips || []
         });
 
         await newResume.save();
         console.log('Resume saved to database. ID:', newResume._id);
+
+        // Save vectors to Pinecone
+        console.log('Saving vectors to Pinecone...');
+        await upsertResumeChunks(newResume._id, req.user.id, embeddedChunks);
+        console.log('Pinecone sync completed.');
 
         // Remove the temporary file
         fs.unlinkSync(req.file.path);

@@ -8,8 +8,7 @@ const ResumeSchema = new mongoose.Schema({
     },
     originalText: String,
     chunks: [{
-        text: String,
-        embedding: [Number]
+        text: String
     }],
     atsScore: {
         type: Number,
@@ -22,7 +21,7 @@ const ResumeSchema = new mongoose.Schema({
     }
 });
 
-// For MongoDB Atlas Vector Search, we would normally use an index. 
-// For this MVP, we'll store embeddings in the document.
+// Chunks are stored without embedding vectors to keep MongoDB document size small.
+// The vector embeddings are offloaded to Pinecone for scalable similarity searches.
 
 module.exports = mongoose.model('Resume', ResumeSchema);
