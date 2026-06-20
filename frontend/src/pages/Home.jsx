@@ -83,7 +83,10 @@ const Home = () => {
         <div className="min-h-screen bg-[#F8FAFC] text-gray-900 overflow-x-hidden font-sans">
             {/* Elegant Navbar */}
             <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 md:px-8 py-4 flex justify-between items-center">
-                <div className="flex items-center space-x-2">
+                <div 
+                    className="flex items-center space-x-2 cursor-pointer"
+                    onClick={() => navigate(localStorage.getItem('token') ? '/dashboard' : '/')}
+                >
                     <img src={logo} alt="RProfile.ai Logo" className="w-8 h-8 md:w-10 md:h-10 rounded-xl shadow-lg shadow-blue-200" />
                     <span className="text-xl md:text-2xl font-black text-[#1E3A8A] tracking-tight">RProfile<span className="text-blue-500">.ai</span></span>
                 </div>

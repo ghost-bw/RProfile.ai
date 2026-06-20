@@ -87,35 +87,37 @@ const ATSCheck = () => {
     const scoreColor = currentScore >= 80 ? 'text-green-600' : currentScore >= 60 ? 'text-yellow-600' : 'text-red-600';
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] text-gray-800 font-sans pb-20">
-            <nav className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
-                <div 
-                    className="flex items-center space-x-2 cursor-pointer"
-                    onClick={() => navigate('/')}
-                >
-                    <div className="bg-[#1E3A8A] p-2 rounded-lg">
-                        <Award className="text-white w-6 h-6" />
+        <div className="min-h-screen bg-[#F8FAFC] text-[#334155] font-sans pb-16">
+            <nav className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 shadow-sm w-full">
+                <div className="w-full px-4 md:px-8 py-3.5 flex justify-between items-center">
+                    <div 
+                        className="flex items-center space-x-2 cursor-pointer"
+                        onClick={() => navigate(localStorage.getItem('token') ? '/dashboard' : '/')}
+                    >
+                        <div className="bg-[#1E3A8A] p-1.5 rounded-lg">
+                            <Award className="text-white w-4.5 h-4.5" />
+                        </div>
+                        <span className="text-xl font-black text-[#1E3A8A] tracking-tight font-serif">RProfile<span className="text-blue-500">.ai</span></span>
                     </div>
-                    <span className="text-2xl font-black text-[#1E3A8A] tracking-tight font-serif">RProfile<span className="text-blue-500">.ai</span></span>
+                    <button 
+                        onClick={() => navigate('/dashboard')}
+                        className="flex items-center space-x-1.5 text-slate-500 hover:text-[#1E3A8A] text-sm font-semibold transition"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Back to Dashboard</span>
+                    </button>
                 </div>
-                <button 
-                    onClick={() => navigate('/dashboard')}
-                    className="flex items-center space-x-2 text-gray-500 hover:text-[#1E3A8A] font-medium transition"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span>Back to Dashboard</span>
-                </button>
             </nav>
 
-            <main className="container mx-auto px-6 py-10 max-w-5xl">
-                <div className="grid lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
+            <main className="w-full px-4 md:px-8 py-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
                         {/* Job Description Input */}
-                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                            <h2 className="text-2xl font-bold mb-4">Target Job Description</h2>
-                            <p className="text-gray-500 mb-6 italic text-sm">Paste the job description here for a tailored ATS match analysis.</p>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <h2 className="text-lg font-bold text-slate-800 mb-1">Target Job Description</h2>
+                            <p className="text-slate-400 text-xs mb-4">Paste the job description here for a tailored ATS match analysis.</p>
                             <textarea
-                                className="w-full h-48 p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none text-gray-700"
+                                className="w-full h-40 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none text-slate-700 text-xs font-medium"
                                 placeholder="Paste job requirements here..."
                                 value={jd}
                                 onChange={(e) => setJd(e.target.value)}
@@ -123,25 +125,25 @@ const ATSCheck = () => {
                             <button
                                 onClick={handleAnalyze}
                                 disabled={analyzing || !jd.trim()}
-                                className="mt-4 w-full bg-[#1E3A8A] text-white py-4 rounded-2xl font-bold hover:bg-blue-800 transition disabled:opacity-50 flex items-center justify-center space-x-2"
+                                className="mt-3 w-full bg-[#1E3A8A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-800 transition disabled:opacity-50 flex items-center justify-center space-x-2 shadow-sm"
                             >
-                                {analyzing ? <RefreshCcw className="animate-spin w-5 h-5" /> : null}
+                                {analyzing ? <RefreshCcw className="animate-spin w-4 h-4" /> : null}
                                 <span>{analyzing ? "Analyzing Match..." : "Analyze Match Percentage"}</span>
                             </button>
                         </div>
 
                         {/* Analysis Results */}
-                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-700 p-10 text-white text-center">
-                                <h1 className="text-4xl font-black mb-2">{analysis ? "JD Match Report" : "General ATS Report"}</h1>
-                                <p className="text-blue-100 opacity-80">{analysis ? "Tailored analysis for your target role" : "Base compatibility analysis"}</p>
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div className="bg-gradient-to-r from-[#1E3A8A] to-blue-700 p-6 text-white text-center">
+                                <h1 className="text-xl font-black">{analysis ? "JD Match Report" : "General ATS Report"}</h1>
+                                <p className="text-blue-100 opacity-80 text-xs mt-1">{analysis ? "Tailored analysis for your target role" : "Base compatibility analysis"}</p>
                             </div>
                             
-                            <div className="p-10 flex flex-col md:flex-row items-center justify-around border-b border-gray-50">
-                                <div className="relative w-48 h-48 mb-8 md:mb-0">
+                            <div className="p-6 flex flex-col sm:flex-row items-center justify-around gap-6 border-b border-slate-50">
+                                <div className="relative w-36 h-36 flex-shrink-0">
                                     <svg className="w-full h-full" viewBox="0 0 36 36">
                                         <path
-                                            className="text-gray-100 stroke-current"
+                                            className="text-slate-100 stroke-current"
                                             strokeDasharray="100, 100"
                                             strokeWidth="3"
                                             fill="none"
@@ -157,14 +159,14 @@ const ATSCheck = () => {
                                         />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className={`text-5xl font-black ${scoreColor}`}>{currentScore}</span>
-                                        <span className="text-gray-400 font-bold text-sm uppercase">Score</span>
+                                        <span className={`text-4xl font-black ${scoreColor}`}>{currentScore}</span>
+                                        <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">Score</span>
                                     </div>
                                 </div>
 
-                                <div className="max-w-sm">
-                                    <h3 className="text-2xl font-bold mb-3">Overall Standing</h3>
-                                    <p className="text-gray-500 leading-relaxed mb-4">
+                                <div className="max-w-sm text-center sm:text-left">
+                                    <h3 className="text-base font-bold text-slate-800 mb-1.5">Overall Standing</h3>
+                                    <p className="text-slate-500 text-xs leading-relaxed">
                                         Your resume has an ATS score of <span className={`font-bold ${scoreColor}`}>{currentScore}%</span>. 
                                         {currentScore >= 80 ? ' Excellent match! High visibility potential.' : 
                                          currentScore >= 60 ? ' Good start, but needs specific keyword optimization.' : 
@@ -174,13 +176,13 @@ const ATSCheck = () => {
                             </div>
 
                             {analysis && analysis.missingSkills && (
-                                <div className="p-10 border-b border-gray-100">
-                                    <h3 className="text-xl font-bold mb-4 flex items-center text-red-500">
-                                        <AlertCircle className="mr-2 w-5 h-5" /> Missing Skills & Keywords
+                                <div className="p-6 border-b border-slate-50">
+                                    <h3 className="text-xs font-bold mb-3 flex items-center text-rose-500 uppercase tracking-wider">
+                                        <AlertCircle className="mr-1.5 w-4.5 h-4.5" /> Missing Skills & Keywords
                                     </h3>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-1.5">
                                         {analysis.missingSkills.map((skill, index) => (
-                                            <span key={index} className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-sm font-bold border border-red-100">
+                                            <span key={index} className="bg-rose-50 text-rose-600 px-2.5 py-0.5 rounded-full text-xs font-semibold border border-rose-100">
                                                 {skill}
                                             </span>
                                         ))}
@@ -188,17 +190,17 @@ const ATSCheck = () => {
                                 </div>
                             )}
 
-                            <div className="p-10 bg-gray-50/50">
-                                <h2 className="text-2xl font-bold mb-8 flex items-center">
-                                    <CheckCircle className="mr-3 text-green-500" /> Improvement Tips
+                            <div className="p-6 bg-slate-50/40">
+                                <h2 className="text-sm font-bold mb-4 flex items-center text-slate-800 uppercase tracking-wider">
+                                    <CheckCircle className="mr-2 text-emerald-500 w-4.5 h-4.5" /> Improvement Recommendations
                                 </h2>
-                                <div className="grid gap-4">
+                                <div className="grid gap-3">
                                     {currentTips.map((tip, index) => (
-                                        <div key={index} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start space-x-4">
-                                            <div className="bg-blue-50 p-2 rounded-lg text-blue-600 flex-shrink-0">
-                                                <Info className="w-5 h-5" />
+                                        <div key={index} className="bg-white p-4 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.01)] border border-slate-100 flex items-start space-x-3">
+                                            <div className="bg-blue-50 p-1.5 rounded-md text-blue-600 flex-shrink-0 mt-0.5">
+                                                <Info className="w-3.5 h-3.5" />
                                             </div>
-                                            <p className="text-gray-700 text-sm font-medium">{tip}</p>
+                                            <p className="text-slate-600 text-xs font-medium leading-relaxed">{tip}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -206,31 +208,31 @@ const ATSCheck = () => {
                         </div>
                     </div>
 
-                    <div className="space-y-8">
-                        <div className="bg-[#1E3A8A] p-8 rounded-3xl text-white shadow-xl">
-                            <h3 className="text-xl font-bold mb-4">Why Tailor?</h3>
-                            <p className="text-blue-100 text-sm leading-relaxed mb-6">
-                                ATS systems rank candidates based on keyword frequency and relevance to the JD. A 90% match score significantly increases your interview odds.
+                    <div className="space-y-6">
+                        <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-sm border border-slate-850">
+                            <h3 className="text-sm font-bold mb-3 text-white">Why Tailor Your Resume?</h3>
+                            <p className="text-slate-300 text-xs leading-relaxed mb-4">
+                                ATS systems rank candidates based on keyword frequency and relevance to the JD. A 90%+ match score significantly increases your interview odds.
                             </p>
-                            <div className="space-y-4">
-                                <div className="flex items-center space-x-3">
-                                    <CheckCircle className="w-5 h-5 text-green-400" />
-                                    <span className="text-sm">Keyword Optimization</span>
+                            <div className="space-y-3">
+                                <div className="flex items-center space-x-2.5 text-xs">
+                                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                    <span className="text-slate-350">Keyword Optimization</span>
                                 </div>
-                                <div className="flex items-center space-x-3">
-                                    <CheckCircle className="w-5 h-5 text-green-400" />
-                                    <span className="text-sm">Format Verification</span>
+                                <div className="flex items-center space-x-2.5 text-xs">
+                                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                    <span className="text-slate-350">Format Verification</span>
                                 </div>
-                                <div className="flex items-center space-x-3">
-                                    <CheckCircle className="w-5 h-5 text-green-400" />
-                                    <span className="text-sm">Skill Gap Analysis</span>
+                                <div className="flex items-center space-x-2.5 text-xs">
+                                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                    <span className="text-slate-350">Skill Gap Analysis</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                            <h3 className="text-xl font-bold mb-4">Resume Insight</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed italic">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <h3 className="text-sm font-bold mb-2 text-slate-800">Resume Insight</h3>
+                            <p className="text-xs text-slate-450 leading-relaxed italic">
                                 "The best resumes aren't a list of duties, but a portfolio of achievements."
                             </p>
                         </div>
