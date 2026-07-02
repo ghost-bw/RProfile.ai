@@ -14,22 +14,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Simulate Deployment Failure
-        id: simulate
-        continue-on-error: true
-
         run: |
           echo "========== BUILD LOG =========="
           echo "Database Connection Failed"
           echo "ModuleNotFoundError: dotenv"
           echo "Connection timeout while connecting to PostgreSQL"
           echo "================================"
-          exit 1
 
       - name: Notify n8n
-        if: steps.simulate.outcome == 'failure'
         run: |
           curl -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
@@ -46,3 +41,6 @@ jobs:
               "event":"${{ github.event_name }}",
               "run_url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }'
+
+      - name: Mark Workflow Failed
+        run: exit 1
