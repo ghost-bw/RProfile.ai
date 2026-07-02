@@ -211,7 +211,7 @@ const AnalyticsDashboard = () => {
                         
                         {/* Tooltip for Strong Areas */}
                         {data?.strongTopics && data.strongTopics.length > 0 && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none shadow-xl border border-slate-800">
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-slate-900 text-white text-[11px] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none shadow-xl border border-slate-800">
                                 <div className="font-bold mb-1.5 border-b border-slate-800 pb-1 text-purple-400">Mastered Topics</div>
                                 <ul className="space-y-1">
                                     {data.strongTopics.map((topic, i) => (
@@ -235,7 +235,7 @@ const AnalyticsDashboard = () => {
 
                         {/* Tooltip for Weak Areas */}
                         {data?.weakTopics && data.weakTopics.length > 0 && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 text-white text-[11px] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none shadow-xl border border-slate-800">
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-slate-900 text-white text-[11px] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none shadow-xl border border-slate-800">
                                 <div className="font-bold mb-1.5 border-b border-slate-800 pb-1 text-rose-450">Topics to Improve</div>
                                 <ul className="space-y-1">
                                     {data.weakTopics.map((topic, i) => (

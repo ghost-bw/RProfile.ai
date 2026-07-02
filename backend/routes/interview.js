@@ -69,12 +69,12 @@ router.post('/start', auth, async (req, res) => {
         }
 
         const interviewerPrompt = `You are an elite Technical Interviewer Agent. 
-        Your goal is to ask concise technical questions.
-        ${customPrompt ? `The user has requested a specific focus: "${customPrompt}". Prioritize questions related to this focus.` : ""}
-        Return JSON format: { "question": string, "topic": string }
-        Ensure the question is relevant to the user's field.`;
+        Your goal is to welcome the candidate warmly, introduce yourself, and ask the candidate to introduce themselves, sharing their background, experience, and key projects.
+        Refer to the candidate's resume/profile details in the context if helpful to make it personalized, but keep it brief.
+        Do not ask technical questions yet; this is the initial ice-breaker/introduction step.
+        Return JSON format: { "question": string, "topic": "Introduction" }`;
 
-        const result = await callGroq(interviewerPrompt, `Context: ${context}\nGenerate the first interview question in JSON format.`);
+        const result = await callGroq(interviewerPrompt, `Context: ${context}\nGenerate a personalized welcome and request for self-introduction in JSON format.`);
 
         const newSession = new Session({
             userId: req.user.id,
@@ -111,18 +111,31 @@ router.post('/answer', auth, async (req, res) => {
         const customPrompt = session.customPrompt;
 
         // 1. Evaluator Agent: Scores the answer
-        const evaluatorPrompt = `You are a Technical Evaluator Agent. 
-        Analyze the answer for: logic correctness, technical depth, and accuracy.
-        ${customPrompt ? `Keep in mind the interview focus was: "${customPrompt}".` : ""}
-        Return JSON: { "score": number (1-10), "confidence": number (1-10), "mistakes": [string], "topic": string }`;
+        let evaluatorPrompt;
+        let coachPrompt;
+
+        if (currentTopic === 'Introduction') {
+            evaluatorPrompt = `You are an Interview Evaluator Agent. 
+            Analyze the candidate's self-introduction. Evaluate their communication skill, clarity, confidence, structure, and how well they highlight their relevant experience based on the resume.
+            Return JSON: { "score": number (1-10), "confidence": number (1-10), "mistakes": [string], "topic": "Introduction" }`;
+
+            coachPrompt = `You are an Interview Coach Agent. 
+            Based on the self-introduction evaluation, provide constructive feedback on their presentation, clarity, and key projects/skills mentioned. Suggest how they can improve their introduction.
+            Return JSON: { "feedback": string, "suggestions": [string] }`;
+        } else {
+            evaluatorPrompt = `You are a Technical Evaluator Agent. 
+            Analyze the answer for: logic correctness, technical depth, and accuracy.
+            ${customPrompt ? `Keep in mind the interview focus was: "${customPrompt}".` : ""}
+            Return JSON: { "score": number (1-10), "confidence": number (1-10), "mistakes": [string], "topic": string }`;
+
+            coachPrompt = `You are an Interview Coach Agent. 
+            Based on the evaluation and the answer, provide constructive feedback and suggestions for improvement.
+            Return JSON: { "feedback": string, "suggestions": [string] }`;
+        }
 
         const evaluationResult = await callGroq(evaluatorPrompt, `Question: ${currentQuestion}\nAnswer: ${answer}`);
 
         // 2. Coach Agent: Provides feedback
-        const coachPrompt = `You are an Interview Coach Agent. 
-        Based on the evaluation and the answer, provide constructive feedback and suggestions for improvement.
-        Return JSON: { "feedback": string, "suggestions": [string] }`;
-
         const coachResult = await callGroq(coachPrompt, `Question: ${currentQuestion}\nAnswer: ${answer}\nScore: ${evaluationResult.score}/10\nMistakes: ${evaluationResult.mistakes.join(', ')}`);
 
         // Update Session
@@ -148,9 +161,9 @@ router.post('/answer', auth, async (req, res) => {
         await progress.save();
 
         // 3. Generate next question or complete
-        if (session.questions.length < 5) {
+        if (session.questions.length < 6) {
             const interviewerPrompt = `You are an elite Technical Interviewer Agent. 
-            Generate the NEXT question. Increase difficulty if the previous score was high, or provide a follow-up.
+            ${currentTopic === 'Introduction' ? "Generate the FIRST technical question based on the candidate's self-introduction and their resume context." : "Generate the NEXT technical question. Increase difficulty if the previous score was high, or provide a follow-up."}
             ${customPrompt ? `IMPORTANT: The interview focus is: "${customPrompt}". All questions MUST strictly adhere to this focus.` : ""}
             Use User Progress: Weak: ${progress.weakTopics.join(', ')}, Strong: ${progress.strongTopics.join(', ')}.
             Return JSON: { "question": string, "topic": string }`;
@@ -214,6 +227,93 @@ router.get('/:id', auth, async (req, res) => {
         console.error(err.message);
         res.status(500).send('Server error');
     }
+});
+
+// @route   POST api/interview/tts
+// @desc    Convert text to speech using OpenAI or ElevenLabs
+router.post('/tts', auth, async (req, res) => {
+    const { text } = req.body;
+    if (!text) {
+        return res.status(400).json({ error: 'Text is required' });
+    }
+
+    // 1. Check ElevenLabs config
+    if (process.env.ELEVENLABS_API_KEY) {
+        try {
+            const voiceId = process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM'; // Rachel (default)
+            const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2';
+            const response = await axios.post(
+                `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+                {
+                    text: text,
+                    model_id: modelId
+                },
+                {
+                    headers: {
+                        'xi-api-key': process.env.ELEVENLABS_API_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    responseType: 'stream'
+                }
+            );
+            res.set('Content-Type', 'audio/mpeg');
+            return response.data.pipe(res);
+        } catch (err) {
+            // Enhanced logging to capture detailed ElevenLabs errors (such as free tier constraints or payment requirements)
+            if (err.response && err.response.data) {
+                // If it is a stream response, we might need to read it as a string to print
+                try {
+                    // responseType was 'stream', so the error data is a readable stream or buffer
+                    let errorBody = '';
+                    if (typeof err.response.data.on === 'function') {
+                        errorBody = await new Promise((resolve) => {
+                            let chunks = [];
+                            err.response.data.on('data', chunk => chunks.push(chunk));
+                            err.response.data.on('end', () => resolve(Buffer.concat(chunks).toString()));
+                            err.response.data.on('error', () => resolve('[Stream Error]'));
+                        });
+                    } else {
+                        errorBody = JSON.stringify(err.response.data);
+                    }
+                    console.error(`ElevenLabs TTS Error (${err.response.status}):`, errorBody);
+                } catch (e) {
+                    console.error('ElevenLabs TTS Error (failed to parse stream error):', err.message);
+                }
+            } else {
+                console.error('ElevenLabs TTS Error:', err.message);
+            }
+            // Fall through to OpenAI if ElevenLabs fails
+        }
+    }
+
+    // 2. Check OpenAI config
+    if (process.env.OPENAI_API_KEY) {
+        try {
+            const voice = process.env.OPENAI_VOICE || 'alloy';
+            const response = await axios.post(
+                'https://api.openai.com/v1/audio/speech',
+                {
+                    model: 'tts-1',
+                    input: text,
+                    voice: voice
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    responseType: 'stream'
+                }
+            );
+            res.set('Content-Type', 'audio/mpeg');
+            return response.data.pipe(res);
+        } catch (err) {
+            console.error('OpenAI TTS Error:', err.message);
+        }
+    }
+
+    // If neither is configured
+    return res.status(450).json({ error: 'No Neural TTS provider configured' });
 });
 
 module.exports = router;

@@ -396,7 +396,7 @@ const Dashboard = () => {
                                         className="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center justify-center space-x-1.5"
                                     >
                                         <PlayIcon className="w-3.5 h-3.5 fill-current" />
-                                        <span>Launch AI Copilot</span>
+                                        <span>Start your Interview</span>
                                     </button>
                                 </div>
                             </div>

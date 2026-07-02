@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Send, MessageSquare, Mic, MicOff, ChevronLeft } from 'lucide-react';
+import { Send, MessageSquare, Mic, MicOff, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 const Interview = () => {
@@ -14,9 +14,110 @@ const Interview = () => {
     const [error, setError] = useState(null);
     const [timer, setTimer] = useState(0);
     const [timerActive, setTimerActive] = useState(false);
+    const [ttsEnabled, setTtsEnabled] = useState(true);
     const navigate = useNavigate();
     const recognitionRef = useRef(null);
     const timerIntervalRef = useRef(null);
+    const chatEndRef = useRef(null);
+    const ttsEnabledRef = useRef(ttsEnabled);
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        ttsEnabledRef.current = ttsEnabled;
+    }, [ttsEnabled]);
+
+    const stopAllSpeech = () => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
+    };
+
+    // Warm up speech synthesis voices on mount
+    useEffect(() => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+        }
+        return () => {
+            stopAllSpeech();
+        };
+    }, []);
+
+    // Scroll to bottom when chat updates
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chat]);
+
+    const speak = async (text, cancelExisting = true) => {
+        if (!ttsEnabledRef.current) return;
+
+        if (cancelExisting) {
+            stopAllSpeech();
+        }
+
+        // Clean markdown notation to make it sound natural
+        let cleanText = text
+            .replace(/\*\*Suggestions:\*\*/g, 'Suggestions:')
+            .replace(/[\#\*\_`~\[\]\(\)\-\+\>\!]/g, '') // remove markdown characters
+            .replace(/\n+/g, ' ') // replace line breaks with spaces
+            .trim();
+
+        if (!cleanText) return;
+
+        // 1. Try to use the high-quality Neural TTS endpoint from the backend
+        try {
+            const res = await api.post('/interview/tts', { text: cleanText }, { responseType: 'blob' });
+            
+            // Create an audio player and play the neural sound
+            const audioUrl = URL.createObjectURL(res.data);
+            const audio = new Audio(audioUrl);
+            audioRef.current = audio;
+            
+            audio.onended = () => {
+                if (audioRef.current === audio) {
+                    audioRef.current = null;
+                }
+            };
+
+            await audio.play();
+        } catch (err) {
+            // 2. Fallback to Browser Native SpeechSynthesis with optimized voices
+            console.log('Neural TTS not configured or failed, falling back to browser voice.');
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'en-US';
+                
+                // Prioritize Natural/Online/Google/Apple voices
+                const voices = window.speechSynthesis.getVoices();
+                const voice = voices.find(v => 
+                    v.lang.startsWith('en') && 
+                    (v.name.toLowerCase().includes('natural') || 
+                     v.name.toLowerCase().includes('online') ||
+                     v.name.toLowerCase().includes('google') ||
+                     v.name.toLowerCase().includes('apple'))
+                ) || voices.find(v => v.lang.startsWith('en'));
+                
+                if (voice) {
+                    utterance.voice = voice;
+                }
+                
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+    };
+
+    const toggleTts = () => {
+        setTtsEnabled(prev => {
+            const nextVal = !prev;
+            if (!nextVal) {
+                stopAllSpeech();
+            }
+            return nextVal;
+        });
+    };
 
     useEffect(() => {
         if (timerActive) {
@@ -68,6 +169,13 @@ const Interview = () => {
                     console.warn('No questions found in session data');
                 }
                 setChat(history);
+                
+                // Speak the welcome question if this is a brand new session
+                if (res.data.questions && res.data.questions.length > 0 && (!res.data.answers || res.data.answers.length === 0)) {
+                    setTimeout(() => {
+                        speak(res.data.questions[0], true);
+                    }, 800);
+                }
             } catch (err) {
                 console.error('Error fetching session:', err);
                 const msg = err.response?.data?.error || err.response?.data?.msg || 'Failed to load interview session';
@@ -111,6 +219,7 @@ const Interview = () => {
         if (isListening) {
             recognitionRef.current.stop();
         } else {
+            stopAllSpeech();
             recognitionRef.current.start();
             setIsListening(true);
         }
@@ -119,6 +228,7 @@ const Interview = () => {
     const handleSend = async () => {
         if (!answer.trim()) return;
         if (isListening) recognitionRef.current.stop();
+        stopAllSpeech(); // Stop talking when the user sends their answer
         stopTimer();
 
         const currentAnswer = answer;
@@ -141,13 +251,23 @@ const Interview = () => {
                 { role: 'ai', content: evaluationContent }
             ]);
 
+            // Speak the evaluation first
+            speak(res.data.evaluation, true);
+
             if (res.data.status === 'active') {
                 setTimeout(() => {
                     setChat(prev => [...prev, { role: 'ai', content: res.data.nextQuestion }]);
+                    // Queue next question to speak after evaluation
+                    speak(res.data.nextQuestion, false);
                     startTimer();
                 }, 1000);
             } else {
-                setChat(prev => [...prev, { role: 'ai', content: "Interview complete! Visit your dashboard for the final report." }]);
+                setTimeout(() => {
+                    const completeMsg = "Interview complete! Visit your dashboard for the final report.";
+                    setChat(prev => [...prev, { role: 'ai', content: completeMsg }]);
+                    // Queue final message
+                    speak(completeMsg, false);
+                }, 1000);
             }
         } catch (err) {
             console.error(err);
@@ -187,8 +307,21 @@ const Interview = () => {
                     <MessageSquare className="w-6 h-6 text-[#1E3A8A] mr-2" />
                     <h2 className="text-xl font-bold text-[#1E3A8A]">AI Technical Interview</h2>
                 </div>
-                <div className="px-3 py-1 bg-[#E0E7FF] text-[#1E3A8A] rounded-full text-xs font-bold uppercase tracking-wider">
-                    Adaptive Mode
+                <div className="flex items-center space-x-3">
+                    <button
+                        onClick={toggleTts}
+                        className={`p-2 rounded-xl border transition-all duration-200 ${
+                            ttsEnabled 
+                                ? 'bg-blue-50 text-[#1E3A8A] border-blue-200 hover:bg-blue-100' 
+                                : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                        }`}
+                        title={ttsEnabled ? 'Mute AI Voice' : 'Unmute AI Voice'}
+                    >
+                        {ttsEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                    </button>
+                    <div className="px-3 py-1 bg-[#E0E7FF] text-[#1E3A8A] rounded-full text-xs font-bold uppercase tracking-wider">
+                        Adaptive Mode
+                    </div>
                 </div>
             </div>
 
@@ -216,6 +349,7 @@ const Interview = () => {
                         </div>
                     </div>
                 )}
+                <div ref={chatEndRef} />
             </div>
 
             {/* Input Area */}

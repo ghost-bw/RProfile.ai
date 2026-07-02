@@ -19,7 +19,10 @@ router.post('/run', auth, async (req, res) => {
     const languageId = languageIds[language] || 63;
 
     try {
-        if (!process.env.RAPIDAPI_KEY || process.env.RAPIDAPI_KEY === 'SIGN-UP-FOR-KEY') {
+        const hasRapidApiKey = process.env.RAPIDAPI_KEY && process.env.RAPIDAPI_KEY !== 'SIGN-UP-FOR-KEY';
+        const hasCustomJudge0Url = !!process.env.JUDGE0_API_URL;
+        
+        if (!hasCustomJudge0Url && !hasRapidApiKey) {
             const simulationResponse = await axios.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
@@ -51,15 +54,28 @@ router.post('/run', auth, async (req, res) => {
             });
         }
 
+        let judgeUrl = 'https://judge0-ce.p.rapidapi.com/submissions';
+        let judgeHeaders = { 'content-type': 'application/json' };
+
+        if (process.env.JUDGE0_API_URL) {
+            let baseUrl = process.env.JUDGE0_API_URL;
+            if (!baseUrl.endsWith('/submissions')) {
+                baseUrl = baseUrl.endsWith('/') ? `${baseUrl}submissions` : `${baseUrl}/submissions`;
+            }
+            judgeUrl = baseUrl;
+            if (process.env.JUDGE0_API_KEY) {
+                judgeHeaders['X-Auth-Token'] = process.env.JUDGE0_API_KEY;
+            }
+        } else {
+            judgeHeaders['X-RapidAPI-Key'] = process.env.RAPIDAPI_KEY;
+            judgeHeaders['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+        }
+
         const options = {
             method: 'POST',
-            url: 'https://judge0-ce.p.rapidapi.com/submissions',
+            url: judgeUrl,
             params: { base64_encoded: 'false', wait: 'true' },
-            headers: {
-                'content-type': 'application/json',
-                'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-                'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
-            },
+            headers: judgeHeaders,
             data: {
                 language_id: languageId,
                 source_code: code,
@@ -149,6 +165,191 @@ router.post('/evaluate', auth, async (req, res) => {
 
     try {
         console.log(`[DEBUG] Evaluating submission for problem: "${problem.title}" (isSubmit: ${isSubmit})`);
+
+        const hasRapidApiKey = process.env.RAPIDAPI_KEY && process.env.RAPIDAPI_KEY !== 'SIGN-UP-FOR-KEY';
+        const hasCustomJudge0Url = !!process.env.JUDGE0_API_URL;
+
+        if (hasCustomJudge0Url || hasRapidApiKey) {
+            console.log(`[DEBUG] Executing code via Judge0 evaluation pipeline...`);
+            
+            // 1. Generate Driver Code using Groq
+            const driverResponse = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                {
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are an expert compiler driver generator.
+Given a programming problem description and a user's solution code, generate a complete, self-contained, and runnable program in the specified language that executes 5 diverse test cases (including edge cases) on the user's code.
+
+The generated code must:
+1. Include the user's code exactly as provided.
+2. Define 5 test cases (inputs and expected outputs) based on the problem.
+3. Execute the user's code on these test cases.
+4. Print the result of each test case to standard output in the exact format:
+__TEST_CASE__ {"input": "...", "expectedOutput": "...", "actualOutput": "...", "passed": true/false}
+
+Ensure the code is syntactically correct, has all necessary imports, handles printing values properly (like lists or objects if applicable), and runs without any external dependencies. Output ONLY the raw executable code. Do NOT wrap it in markdown code blocks or write explanations. Start writing code immediately.`
+                        },
+                        {
+                            role: 'user',
+                            content: `Language: ${language}\nProblem: ${JSON.stringify(problem)}\nUser's Code:\n${code}`
+                        }
+                    ],
+                    temperature: 0
+                },
+                {
+                    headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' }
+                }
+            );
+
+            let driverCode = driverResponse.data.choices[0].message.content;
+            // Clean up code block indicators if any were returned despite the prompt
+            if (driverCode.startsWith('```')) {
+                driverCode = driverCode.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '');
+            }
+
+            console.log(`[DEBUG] Generated test driver code of length ${driverCode.length}`);
+
+            // Map frontend languages to Judge0 language IDs
+            const languageIds = {
+                'javascript': 63,
+                'python': 71,
+                'java': 62,
+                'cpp': 54
+            };
+            const languageId = languageIds[language] || 63;
+
+            let judgeUrl = 'https://judge0-ce.p.rapidapi.com/submissions';
+            let judgeHeaders = { 'content-type': 'application/json' };
+
+            if (process.env.JUDGE0_API_URL) {
+                let baseUrl = process.env.JUDGE0_API_URL;
+                if (!baseUrl.endsWith('/submissions')) {
+                    baseUrl = baseUrl.endsWith('/') ? `${baseUrl}submissions` : `${baseUrl}/submissions`;
+                }
+                judgeUrl = baseUrl;
+                if (process.env.JUDGE0_API_KEY) {
+                    judgeHeaders['X-Auth-Token'] = process.env.JUDGE0_API_KEY;
+                }
+            } else {
+                judgeHeaders['X-RapidAPI-Key'] = process.env.RAPIDAPI_KEY;
+                judgeHeaders['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+            }
+
+            // 2. Submit to Judge0
+            const options = {
+                method: 'POST',
+                url: judgeUrl,
+                params: { base64_encoded: 'false', wait: 'true' },
+                headers: judgeHeaders,
+                data: {
+                    language_id: languageId,
+                    source_code: driverCode,
+                    stdin: ''
+                }
+            };
+
+            const judgeResponse = await axios.request(options);
+            const { stdout, stderr, compile_output, message, status } = judgeResponse.data;
+
+            console.log(`[DEBUG] Judge0 execution status: ${status ? status.description : 'Unknown'}`);
+
+            // 3. Send results to Groq to generate the final structured JSON response
+            const evaluationResponse = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                {
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are an ELITE Competitive Programming Judge.
+You will be provided with the user's code, the original problem, and the execution results from running the generated test driver program on a real compiler/sandbox (Judge0).
+
+Your task is to analyze the results and compile a clean, structured JSON evaluation.
+
+Judge0 Execution Results:
+Status: ${status ? status.description : 'Unknown'} (ID: ${status ? status.id : 'N/A'})
+Stdout: ${stdout || ''}
+Stderr: ${stderr || ''}
+Compile Output: ${compile_output || ''}
+Message: ${message || ''}
+
+If there was a compilation error, syntax error, runtime error, or time limit exceeded (i.e. status was not Accepted / status.id was not 3):
+- Set "passedAll" to false.
+- Set "score" to 0.0.
+- Detail the compiler/runtime errors in the "correctness" field and in the test case explanation.
+
+If the program executed:
+- Parse the "__TEST_CASE__" lines from stdout to verify which test cases passed or failed.
+- Check if the user's code is a general algorithm or if it hardcodes outputs or cheats. If it cheats, set "passedAll" to false and "score" to 0.0.
+- Fill in the testCases array. If the driver program output didn't print all 5 test cases (due to crash, error, etc.), complete the array by indicating which tests failed due to the crash.
+
+Return JSON format: { 
+    "correctness": "Brief overall summary of correctness or error details", 
+    "complexity": "e.g., Time: O(N), Space: O(1)", 
+    "improvements": ["List of suggestions or empty if perfect"], 
+    "score": number (0.0 to 10.0),
+    "passedAll": boolean,
+    "testCases": [
+        {
+            "input": "e.g., nums = [2,7,11,15], target = 9",
+            "expectedOutput": "e.g., [0, 1]",
+            "actualOutput": "e.g., [0, 1] or other result returned",
+            "passed": boolean,
+            "explanation": "Brief explanation of results"
+        }
+    ]
+}`
+                        },
+                        {
+                            role: 'user',
+                            content: `Problem: ${JSON.stringify(problem)}\nLanguage: ${language}\nUser Code:\n${code}\nAction: ${isSubmit ? 'Full Submission' : 'Test Run'}`
+                        }
+                    ],
+                    temperature: 0,
+                    response_format: { type: "json_object" }
+                },
+                {
+                    headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' }
+                }
+            );
+
+            const evaluation = JSON.parse(evaluationResponse.data.choices[0].message.content);
+
+            if (isSubmit && evaluation.passedAll) {
+                try {
+                    let progress = await UserProgress.findOne({ user: req.user.id });
+                    if (!progress) {
+                        progress = new UserProgress({ user: req.user.id, solvedProblems: [] });
+                    }
+                    const alreadySolved = progress.solvedProblems.find(p => p.title === problem.title);
+                    if (!alreadySolved) {
+                        let difficulty = problem.difficulty || 'Medium';
+                        difficulty = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+                        if (!['Easy', 'Medium', 'Hard'].includes(difficulty)) difficulty = 'Medium';
+
+                        progress.solvedProblems.push({
+                            title: problem.title,
+                            difficulty: difficulty,
+                            solvedAt: new Date()
+                        });
+                        await progress.save();
+                        console.log(`[DEBUG] Problem "${problem.title}" marked as SOLVED for user ${req.user.id}`);
+                    }
+                } catch (progErr) {
+                    console.error('PROGRESS UPDATE ERROR:', progErr.message);
+                }
+            } else if (isSubmit) {
+                console.log(`[DEBUG] Submission FAILED for problem: "${problem.title}" (Score: ${evaluation.score}, passedAll: ${evaluation.passedAll})`);
+            }
+
+            return res.json(evaluation);
+        }
+
+        // --- FALLBACK TO PURE GROQ AI SIMULATION IF RAPIDAPI_KEY NOT SET ---
+        console.log(`[DEBUG] RAPIDAPI_KEY not configured. Falling back to pure Groq simulation...`);
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
