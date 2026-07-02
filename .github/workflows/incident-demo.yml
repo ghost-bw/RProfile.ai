@@ -3,38 +3,47 @@ name: Incident Demo
 on:
   workflow_dispatch:
 
+  push:
+    branches:
+      - incident-demo
+
 jobs:
   simulate_failure:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Simulate Deployment Failure
         run: |
+          echo "========== BUILD LOG =========="
           echo "Database Connection Failed"
           echo "ModuleNotFoundError: dotenv"
+          echo "Connection timeout while connecting to PostgreSQL"
+          echo "================================"
           exit 1
 
       - name: Notify n8n
-        if: failure()
+        if: ${{ failure() }}
         run: |
           curl -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
-          -H "Content-Type: application/json" \
-          -H "x-webhook-secret: ${{ secrets.N8N_WEBHOOK_SECRET }}" \
-          -d '{
-            "repository":"${{ github.repository }}",
-            "workflow":"${{ github.workflow }}",
-            "run_id":"${{ github.run_id }}",
-            "run_number":"${{ github.run_number }}",
-            "branch":"${{ github.ref_name }}",
-            "commit":"${{ github.sha }}",
-            "actor":"${{ github.actor }}",
-            "status":"failed",
-            "event":"${{ github.event_name }}"
-          }'
+            -H "Content-Type: application/json" \
+            -H "x-webhook-secret: ${{ secrets.N8N_WEBHOOK_SECRET }}" \
+            -d '{
+              "repository":"${{ github.repository }}",
+              "workflow":"${{ github.workflow }}",
+              "run_id":"${{ github.run_id }}",
+              "run_number":"${{ github.run_number }}",
+              "branch":"${{ github.ref_name }}",
+              "commit":"${{ github.sha }}",
+              "actor":"${{ github.actor }}",
+              "status":"failed",
+              "event":"${{ github.event_name }}",
+              "run_url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
