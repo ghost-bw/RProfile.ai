@@ -1,0 +1,40 @@
+name: Incident Demo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  simulate_failure:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Simulate Deployment Failure
+        run: |
+          echo "Database Connection Failed"
+          echo "ModuleNotFoundError: dotenv"
+          exit 1
+
+      - name: Notify n8n
+        if: failure()
+        run: |
+          curl -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
+          -H "Content-Type: application/json" \
+          -H "x-webhook-secret: ${{ secrets.N8N_WEBHOOK_SECRET }}" \
+          -d '{
+            "repository":"${{ github.repository }}",
+            "workflow":"${{ github.workflow }}",
+            "run_id":"${{ github.run_id }}",
+            "run_number":"${{ github.run_number }}",
+            "branch":"${{ github.ref_name }}",
+            "commit":"${{ github.sha }}",
+            "actor":"${{ github.actor }}",
+            "status":"failed",
+            "event":"${{ github.event_name }}"
+          }'
