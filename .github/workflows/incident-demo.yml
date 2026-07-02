@@ -3,6 +3,10 @@ name: Incident Demo
 on:
   workflow_dispatch:
 
+  push:
+    branches:
+      - incident-demo
+
 jobs:
   simulate_failure:
     runs-on: ubuntu-latest
