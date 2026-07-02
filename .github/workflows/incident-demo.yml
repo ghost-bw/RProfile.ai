@@ -33,6 +33,7 @@ jobs:
         if: ${{ failure() }}
         run: |
           curl -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
+<<<<<<< HEAD
             -H "Content-Type: application/json" \
             -H "x-webhook-secret: ${{ secrets.N8N_WEBHOOK_SECRET }}" \
             -d '{
@@ -47,3 +48,18 @@ jobs:
               "event":"${{ github.event_name }}",
               "run_url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }'
+=======
+          -H "Content-Type: application/json" \
+          -H "x-webhook-secret: ${{ secrets.N8N_WEBHOOK_SECRET }}" \
+          -d '{
+            "repository":"${{ github.repository }}",
+            "workflow":"${{ github.workflow }}",
+            "run_id":"${{ github.run_id }}",
+            "run_number":"${{ github.run_number }}",
+            "branch":"${{ github.ref_name }}",
+            "commit":"${{ github.sha }}",
+            "actor":"${{ github.actor }}",
+            "status":"failed",
+            "event":"${{ github.event_name }}"
+          }'
+>>>>>>> ecdfcbe929d735c66399d3622e6f792b80b9c096
