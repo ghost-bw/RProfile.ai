@@ -259,7 +259,7 @@ const AptitudeRound = () => {
                                 <div className="space-y-2 md:space-y-3">
                                     {aptitudeQuestions[currentAptIndex].options.map((option, idx) => {
                                         let borderClass = 'border-[#2A2A2A] bg-[#1A1A1A] hover:border-[#3A3A3A]';
-                                        let textClass = 'text-gray-400';
+                                        let textClass = 'text-gray-500';
                                         
                                         if (showFeedback) {
                                             const isThisCorrect = Number(idx) === Number(aptitudeQuestions[currentAptIndex].correctAnswer);
