@@ -24,6 +24,9 @@ jobs:
           echo "Connection timeout while connecting to PostgreSQL"
           echo "================================"
 
+      - name: Mark Workflow Failed
+              run: exit 1
+              
       - name: Notify n8n
         run: |
           curl -X POST "${{ secrets.N8N_WEBHOOK_URL }}" \
@@ -42,5 +45,4 @@ jobs:
               "run_url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }'
 
-      - name: Mark Workflow Failed
-        run: exit 1
+      
