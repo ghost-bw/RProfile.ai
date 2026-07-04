@@ -25,7 +25,7 @@ jobs:
           echo "================================"
 
       - name: Mark Workflow Failed
-                  run: exit 1
+        run: exit 1
               
       - name: Notify n8n
         run: |
