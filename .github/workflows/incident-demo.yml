@@ -44,5 +44,5 @@ jobs:
               "run_url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }'
 
-         - name: Mark Workflow Failed
+      - name: Mark Workflow Failed
               run: exit 1
