@@ -24,7 +24,8 @@ jobs:
           echo "Connection timeout while connecting to PostgreSQL"
           echo "================================"
 
-      
+      - name: Force failure for testing
+        run: exit 1
               
       - name: Notify n8n
         run: |
