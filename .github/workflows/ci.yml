@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: TEMP - Force Failure for Testing
+        run: exit 1
+
       # ---------- Backend ----------
       - name: Install Backend Dependencies
         working-directory: backend
