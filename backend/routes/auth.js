@@ -139,10 +139,7 @@ router.post('/update-profile', auth, async (req, res) => {
         if (!user) return res.status(404).json({ msg: 'User not found' });
 
         if (name) user.name = name;
-        if (password) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(password, salt);
-        }
+        if (password) user.password = password;
 
         await user.save();
         res.json({ msg: 'Profile updated successfully' });

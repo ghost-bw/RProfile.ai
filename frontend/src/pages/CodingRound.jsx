@@ -246,9 +246,25 @@ const CodingRound = () => {
                                     <h3 className="text-white text-base font-bold mb-3 flex items-center">
                                         <Info className="w-4 h-4 mr-2 text-blue-500" /> Examples
                                     </h3>
-                                    <pre className="bg-[#141414] p-4 rounded-lg border border-[#2A2A2A] text-xs font-mono text-blue-300 whitespace-pre-wrap mb-6 shadow-inner">
-                                        {currentProblem.example}
-                                    </pre>
+                                    {(Array.isArray(currentProblem.examples) && currentProblem.examples.length > 0 ? currentProblem.examples : [{ input: currentProblem.example || 'Input not provided', output: 'Output not provided', explanation: 'No explanation provided.' }]).map((example, idx) => (
+                                        <div key={idx} className="bg-[#141414] p-4 rounded-lg border border-[#2A2A2A] mb-4 shadow-inner">
+                                            <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mb-3">Example {idx + 1}</div>
+                                            <div className="space-y-3 text-xs font-mono">
+                                                <div>
+                                                    <div className="text-[9px] uppercase text-gray-500 mb-1">Input</div>
+                                                    <pre className="whitespace-pre-wrap text-blue-300 bg-[#0F0F0F] p-2 rounded border border-[#2A2A2A]">{example.input || 'Input not provided'}</pre>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] uppercase text-gray-500 mb-1">Output</div>
+                                                    <pre className="whitespace-pre-wrap text-green-300 bg-[#0F0F0F] p-2 rounded border border-[#2A2A2A]">{example.output || 'Output not provided'}</pre>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] uppercase text-gray-500 mb-1">Explanation</div>
+                                                    <div className="whitespace-pre-wrap text-gray-300 bg-[#0F0F0F] p-2 rounded border border-[#2A2A2A]">{example.explanation || 'No explanation provided.'}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
 
                                     <h3 className="text-white text-base font-bold mb-3 flex items-center">
                                         <Cpu className="w-4 h-4 mr-2 text-yellow-500" /> Constraints

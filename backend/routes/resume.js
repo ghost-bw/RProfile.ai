@@ -135,10 +135,10 @@ router.post('/analyze-jd', auth, async (req, res) => {
             relevantContext = matches.map(m => m.metadata.text).join('\n---\n');
         } catch (pinErr) {
             console.error('Pinecone retrieval error, falling back to basic substring:', pinErr.message);
-            relevantContext = resume.originalText.substring(0, 4000);
+            relevantContext = (resume.originalText || '').substring(0, 4000);
         }
         if (!relevantContext) {
-            relevantContext = resume.originalText.substring(0, 4000);
+            relevantContext = (resume.originalText || '').substring(0, 4000);
         }
 
         const response = await axios.post(

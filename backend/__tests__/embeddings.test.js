@@ -14,7 +14,7 @@ describe('Embeddings Utility - chunkText', () => {
         // Next chunk starts at: 7 - 1 = 6
         // Third chunk: start 6, end 10 -> 'ghij'
         const chunks = chunkText(text, 4, 1);
-        expect(chunks).toEqual(['abcd', 'defg', 'ghij', 'j']);
+        expect(chunks).toEqual(['abcd', 'defg', 'ghij']);
     });
 
     it('should return a single chunk if text is smaller than size', () => {

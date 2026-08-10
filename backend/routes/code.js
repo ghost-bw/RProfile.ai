@@ -109,7 +109,7 @@ router.get('/generate-problem', auth, async (req, res) => {
         const randomTopic = topics[Math.floor(Math.random() * topics.length)];
 
         const promptContent = query 
-            ? `STRICT REQUIREMENT: Generate a high-quality DSA problem about: "${query}". Ensure the problem is technically sound and follows standard interview formats. ${solvedContext}`
+            ? `STRICT REQUIREMENT: Generate a high-quality DSA problem about the exact topic/concept: "${query}". This must be the primary focus of the title, description, and algorithm. Do NOT generate a random unrelated problem. The title should mention or clearly reflect "${query}". The description must include a scenario or requirement tied directly to "${query}". Use a standard interview-friendly format and keep the problem solvable with a clear algorithm. ${solvedContext}`
             : `Generate a random high-quality DSA problem. Focus on the topic of "${randomTopic}" but ensure it is not in the solved list. ${solvedContext}\nRandom Seed: ${Date.now()}`;
 
         console.log(`[DEBUG] Prompting AI for topic: ${query || randomTopic}`);
@@ -124,6 +124,12 @@ router.get('/generate-problem', auth, async (req, res) => {
                         content: `You are a Senior Coding Interviewer at a top-tier tech company. 
                         Generate a high-quality, unique DSA problem. 
                         You MUST output valid JSON.
+
+                        TOP PRIORITY RULE:
+                        - If the user request includes a topic or concept like "Binary Search", "Graph", "DP", "Two Pointers", "Trie", etc., the generated problem MUST be centered on that exact topic.
+                        - The title and description must clearly reflect the requested concept.
+                        - Do not drift to a different algorithm or unrelated topic.
+                        - If a query is provided, it is the dominant requirement and should outweigh randomness.
                         
                         STRICT RULE FOR "defaultCode":
                         - The "defaultCode" MUST ONLY contain the function signature, necessary imports, and empty boilerplate.
@@ -131,7 +137,16 @@ router.get('/generate-problem', auth, async (req, res) => {
                         - Example for JavaScript: "function functionName(param) {\n    // Your code here\n}"
                         
                         ${solvedContext}
-                        Structure: { "title": string, "description": string, "difficulty": string, "constraints": [string], "example": string, "functionName": string, "defaultCode": { "javascript": string, "python": string, "cpp": string, "java": string } }` 
+                        Structure: { "title": string, "description": string, "difficulty": string, "constraints": [string], "functionName": string, "examples": [{ "input": string, "output": string, "explanation": string }], "example": string, "defaultCode": { "javascript": string, "python": string, "cpp": string, "java": string } }
+
+                        CRITICAL EXAMPLE RULES:
+                        - Provide at least 2 examples in the "examples" array.
+                        - Each example must follow this exact structure: { "input": "...", "output": "...", "explanation": "..." }.
+                        - The "example" field must be a combined multiline string using the format:
+                          Input: ...
+                          Output: ...
+                          Explanation: ...
+                        - Do NOT return a single example only. At least two examples are mandatory.` 
                     },
                     { role: 'user', content: promptContent }
                 ],
@@ -144,6 +159,73 @@ router.get('/generate-problem', auth, async (req, res) => {
         );
 
         const problem = JSON.parse(response.data.choices[0].message.content);
+
+        const buildFallbackExamples = (problemMeta) => {
+            const title = String(problemMeta?.title || '').toLowerCase();
+
+            if (title.includes('palindrome')) {
+                return [
+                    {
+                        input: 's = "racecar"',
+                        output: 'true',
+                        explanation: 'The string reads the same forward and backward, so the palindrome check returns true.'
+                    },
+                    {
+                        input: 's = "hello"',
+                        output: 'false',
+                        explanation: 'The letters do not match when read in reverse, so the result is false.'
+                    }
+                ];
+            }
+
+            if (title.includes('merge') || title.includes('interval')) {
+                return [
+                    {
+                        input: 'intervals = [[1,3],[2,6],[8,10],[15,18]]',
+                        output: '[[1,6],[8,10],[15,18]]',
+                        explanation: 'The overlapping intervals [1,3] and [2,6] are merged into [1,6]. The rest stay unchanged.'
+                    },
+                    {
+                        input: 'intervals = [[1,4],[4,5]]',
+                        output: '[[1,5]]',
+                        explanation: 'The intervals touch at 4, so they are considered overlapping and merged together.'
+                    }
+                ];
+            }
+
+            return [
+                {
+                    input: 'nums = [2, 7, 11, 15], target = 9',
+                    output: '[0, 1]',
+                    explanation: 'The values 2 and 7 add up to 9, so the function returns their indices [0, 1].'
+                },
+                {
+                    input: 'nums = [3, 2, 4], target = 6',
+                    output: '[1, 2]',
+                    explanation: 'The values 2 and 4 sum to 6, so the output is the indices [1, 2].'
+                }
+            ];
+        };
+
+        const rawExamples = Array.isArray(problem.examples) ? problem.examples : [];
+        const normalizedExamples = rawExamples
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((example) => ({
+                input: String(example.input ?? '').trim() || 'Not provided',
+                output: String(example.output ?? '').trim() || 'Not provided',
+                explanation: String(example.explanation ?? '').trim() || 'No explanation provided.'
+            }));
+
+        const finalExamples = normalizedExamples.length >= 2
+            ? normalizedExamples.slice(0, 2)
+            : buildFallbackExamples(problem).slice(0, 2);
+
+        problem.examples = finalExamples;
+        problem.example = finalExamples
+            .map((example) => `Input: ${example.input}\nOutput: ${example.output}\nExplanation: ${example.explanation}`)
+            .join('\n\n');
+
         console.log(`[DEBUG] AI Generated: "${problem.title}"`);
         res.json(problem);
     } catch (err) {

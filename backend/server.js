@@ -5,20 +5,53 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
-// CORS configuration - restrict origins
+const server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Stop the other process or free the port, then restart the backend.`);
+        process.exit(1);
+    }
+
+    console.error('Server startup error:', err);
+    process.exit(1);
+});
+
+// CORS configuration - allow local development and deployed Render origins
+const normalizeOrigin = (value) => {
+    if (!value) return null;
+
+    try {
+        return new URL(value).origin;
+    } catch (error) {
+        return value.replace(/\/+$/, '');
+    }
+};
+
 const allowedOrigins = [
-    process.env.FRONTEND_URL,
+    normalizeOrigin(process.env.FRONTEND_URL),
+    normalizeOrigin(process.env.VITE_API_URI),
     'http://localhost:3000',
     'http://localhost:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173'
 ].filter(Boolean);
 
+const isRenderOrigin = (origin) => /^(https:\/\/.*\.onrender\.com)$/i.test(origin || '');
+
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        if (
+            !origin ||
+            allowedOrigins.includes(origin) ||
+            isRenderOrigin(origin) ||
+            origin.startsWith('http://localhost:') ||
+            origin.startsWith('http://127.0.0.1:')
+        ) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
@@ -70,6 +103,3 @@ app.get('/', (req, res) => {
     res.send('AI Interview Copilot API is running...');
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});

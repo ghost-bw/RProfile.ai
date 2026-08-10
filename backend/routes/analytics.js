@@ -178,7 +178,7 @@ router.get('/roadmap', auth, async (req, res) => {
             Analyze the user's resume carefully to determine their actual field (e.g., HR, Marketing, Finance, Nursing, Mechanical Engineering, etc.) and generate a roadmap SPECIFIC to that field.
 
             USER BACKGROUND (from Resume):
-            ${resume.originalText.substring(0, 3000)}
+            ${(resume.originalText || '').substring(0, 3000)}
 
             PERFORMANCE DATA:
             - Weak Topics identified in sessions: ${progress && progress.weakTopics && progress.weakTopics.length > 0 ? progress.weakTopics.join(', ') : 'None yet'}
