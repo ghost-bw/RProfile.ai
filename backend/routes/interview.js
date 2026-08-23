@@ -14,7 +14,7 @@ const callGroq = async (systemPrompt, userPrompt) => {
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
-                model: 'llama-3.3-70b-versatile', // Upgraded for better instruction following
+                model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                 messages: [
                     { 
                         role: 'system', 

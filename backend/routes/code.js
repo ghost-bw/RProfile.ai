@@ -26,7 +26,7 @@ router.post('/run', auth, async (req, res) => {
             const simulationResponse = await axios.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
-                    model: 'llama-3.3-70b-versatile',
+                    model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                     messages: [
                         { 
                             role: 'system', 
@@ -117,7 +117,7 @@ router.get('/generate-problem', auth, async (req, res) => {
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
-                model: 'llama-3.3-70b-versatile',
+                model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                 messages: [
                     { 
                         role: 'system', 
@@ -258,7 +258,7 @@ router.post('/evaluate', auth, async (req, res) => {
             const driverResponse = await axios.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
-                    model: 'llama-3.3-70b-versatile',
+                    model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                     messages: [
                         {
                             role: 'system',
@@ -342,7 +342,7 @@ Ensure the code is syntactically correct, has all necessary imports, handles pri
             const evaluationResponse = await axios.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
-                    model: 'llama-3.3-70b-versatile',
+                    model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                     messages: [
                         {
                             role: 'system',
@@ -435,7 +435,7 @@ Return JSON format: {
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
-                model: 'llama-3.3-70b-versatile',
+                model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                 messages: [
                     { 
                         role: 'system', 
@@ -543,7 +543,7 @@ router.get('/generate-aptitude', auth, async (req, res) => {
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
-                model: 'llama-3.3-70b-versatile',
+                model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                 messages: [
                     { 
                         role: 'system', 

@@ -1,9 +1,17 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URI || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+let rawBaseUrl = import.meta.env.VITE_API_URI || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Normalize URL: remove trailing slashes
+rawBaseUrl = rawBaseUrl.replace(/\/+$/, '');
+
+// Ensure /api path prefix is included
+if (!rawBaseUrl.endsWith('/api')) {
+    rawBaseUrl = `${rawBaseUrl}/api`;
+}
 
 const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: rawBaseUrl,
 });
 
 // Add a request interceptor to include the token in headers

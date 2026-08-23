@@ -35,12 +35,12 @@ router.post('/upload', [auth, upload.single('resume')], async (req, res) => {
         const text = data.text;
         console.log('PDF parsed successfully. Text length:', text.length);
 
-        // ATS Analysis using Groq
-        console.log('Sending request to Groq for ATS analysis...');
+        const modelName = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+        console.log(`Sending request to Groq (${modelName}) for ATS analysis...`);
         const atsResponse = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
-                model: 'llama-3.3-70b-versatile',
+                model: modelName,
                 messages: [
                     { 
                         role: 'system', 
@@ -144,7 +144,7 @@ router.post('/analyze-jd', auth, async (req, res) => {
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
-                model: 'llama-3.3-70b-versatile',
+                model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
                 messages: [
                     { 
                         role: 'system', 

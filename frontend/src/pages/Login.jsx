@@ -123,7 +123,8 @@ const Login = () => {
             localStorage.setItem('token', res.data.token);
             navigate('/dashboard');
         } catch (err) {
-            setError('Google Login failed');
+            console.error('Google Auth Error:', err);
+            setError(err.response?.data?.msg || err.response?.data?.error || 'Google Login failed');
         } finally {
             setLoading(false);
         }
