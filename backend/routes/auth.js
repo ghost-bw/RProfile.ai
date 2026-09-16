@@ -61,13 +61,13 @@ router.post('/signup', async (req, res) => {
             });
         }
 
-        await user.save();
         await sendOTP(email, otp);
+        await user.save();
 
         res.json({ msg: 'OTP sent to email. Please verify.' });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ msg: 'Server error' });
+        console.error('Signup failed:', err);
+        res.status(500).json({ msg: 'Unable to send verification email. Please try again later.' });
     }
 });
 
