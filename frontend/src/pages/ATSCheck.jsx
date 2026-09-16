@@ -92,7 +92,7 @@ const ATSCheck = () => {
                 <div className="w-full px-4 md:px-8 py-3.5 flex justify-between items-center">
                     <div 
                         className="flex items-center space-x-2 cursor-pointer"
-                        onClick={() => navigate(localStorage.getItem('token') ? '/dashboard' : '/')}
+                        onClick={() => navigate('/dashboard')}
                     >
                         <div className="bg-[#1E3A8A] p-1.5 rounded-lg">
                             <Award className="text-white w-4.5 h-4.5" />

@@ -9,6 +9,16 @@ const { sendOTP } = require('../utils/mailer');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const setAuthCookie = (res, token) => {
+    res.cookie('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/'
+    });
+};
+
 // @route   GET api/auth/user
 // @desc    Get user data
 router.get('/user', auth, async (req, res) => {
@@ -84,7 +94,8 @@ router.post('/verify-otp', async (req, res) => {
         const payload = { user: { id: user.id } };
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-        res.json({ token });
+        setAuthCookie(res, token);
+        res.json({ msg: 'Authentication successful' });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ msg: 'Server error' });
@@ -122,7 +133,8 @@ router.post('/google', async (req, res) => {
         const payload = { user: { id: user.id } };
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-        res.json({ token });
+        setAuthCookie(res, token);
+        res.json({ msg: 'Authentication successful' });
     } catch (err) {
         console.error(err.message);
         res.status(400).json({ msg: 'Google Auth failed' });
@@ -186,12 +198,18 @@ router.post('/login', async (req, res) => {
             { expiresIn: '24h' }
         );
         console.log('--- LOGIN ATTEMPT SUCCESS --- Token generated');
-        res.json({ token });
+        setAuthCookie(res, token);
+        res.json({ msg: 'Authentication successful' });
     } catch (err) {
         console.error('--- LOGIN ATTEMPT FAILED ---');
         console.error('Error Message:', err.message);
         res.status(500).json({ msg: 'Server error' });
     }
+});
+
+router.post('/logout', (req, res) => {
+    res.clearCookie('auth_token', { path: '/' });
+    res.json({ msg: 'Logged out successfully' });
 });
 
 // @route   POST api/auth/forgot-password

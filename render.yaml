@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: resumepro-api
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX
+        value: resumepro
+      - key: GROQ_API_KEY
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: JUDGE0_API_URL
+        sync: false
+      - key: JUDGE0_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        value: 21m00Tcm4TlvDq8ikWAM
+      - key: ELEVENLABS_MODEL_ID
+        value: eleven_multilingual_v2

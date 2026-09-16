@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
@@ -21,40 +22,53 @@ server.on('error', (err) => {
     process.exit(1);
 });
 
-// CORS configuration - allow local development and deployed Render origins
+// CORS configuration - allow local development, AWS, Render, and custom domain origins
 const normalizeOrigin = (value) => {
-    if (!value) return null;
-
-    try {
-        return new URL(value).origin;
-    } catch (error) {
-        return value.replace(/\/+$/, '');
-    }
+    if (!value) return [];
+    return value
+        .split(',')
+        .map(v => v.trim())
+        .map(v => {
+            try {
+                return new URL(v).origin;
+            } catch (error) {
+                return v.replace(/\/+$/, '');
+            }
+        })
+        .filter(Boolean);
 };
 
 const allowedOrigins = [
-    normalizeOrigin(process.env.FRONTEND_URL),
-    normalizeOrigin(process.env.VITE_API_URI),
+    ...normalizeOrigin(process.env.FRONTEND_URL),
+    ...normalizeOrigin(process.env.VITE_API_URI),
     'http://localhost:3000',
     'http://localhost:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173'
 ].filter(Boolean);
 
-const isRenderOrigin = (origin) => /^(https:\/\/.*\.onrender\.com)$/i.test(origin || '');
+const isCloudOrigin = (origin) => {
+    if (!origin) return false;
+    return (
+        /^(https:\/\/.*\.onrender\.com)$/i.test(origin) ||
+        /^(https:\/\/.*\.amplifyapp\.com)$/i.test(origin) ||
+        /^(https:\/\/.*\.elasticbeanstalk\.com)$/i.test(origin) ||
+        /^(https:\/\/.*\.awsapp\.com)$/i.test(origin)
+    );
+};
 
 app.use(cors({
     origin: (origin, callback) => {
         if (
             !origin ||
             allowedOrigins.includes(origin) ||
-            isRenderOrigin(origin) ||
+            isCloudOrigin(origin) ||
             origin.startsWith('http://localhost:') ||
             origin.startsWith('http://127.0.0.1:')
         ) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(new Error(`CORS blocked for origin: ${origin}`));
         }
     },
     credentials: true
@@ -78,6 +92,7 @@ const authLimiter = rateLimit({
 });
 
 app.use(express.json());
+app.use(cookieParser());
 app.use('/api/', globalLimiter);
 app.use('/api/auth/', authLimiter);
 

@@ -162,7 +162,7 @@ const AnalyticsDashboard = () => {
         <div className="min-h-screen bg-[#F8FAFC] text-[#334155] font-sans pb-16">
             <nav className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50 shadow-sm w-full">
                 <div className="w-full px-4 md:px-8 py-3.5 flex justify-between items-center">
-                    <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate(localStorage.getItem('token') ? '/dashboard' : '/')}>
+                    <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
                         <div className="bg-[#1E3A8A] p-1.5 rounded-lg">
                             <Award className="text-white w-4.5 h-4.5" />
                         </div>

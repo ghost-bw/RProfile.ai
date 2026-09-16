@@ -65,7 +65,6 @@ const Login = () => {
                     email: formData.email,
                     otp: formData.otp
                 });
-                localStorage.setItem('token', res.data.token);
                 navigate('/dashboard');
                 return;
             }
@@ -99,7 +98,6 @@ const Login = () => {
                 setIsVerifying(true);
                 setMsg('OTP sent to your email. Please verify.');
             } else {
-                localStorage.setItem('token', res.data.token);
                 navigate('/dashboard');
             }
         } catch (err) {
@@ -120,7 +118,6 @@ const Login = () => {
             const res = await api.post('/auth/google', {
                 tokenId: response.credential
             });
-            localStorage.setItem('token', res.data.token);
             navigate('/dashboard');
         } catch (err) {
             console.error('Google Auth Error:', err);

@@ -41,9 +41,6 @@ const Dashboard = () => {
     const navigate = useNavigate();
 
     const fetchDashboardData = useCallback(async () => {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
         setLoading(true);
 
         try {
@@ -139,8 +136,9 @@ const Dashboard = () => {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        window.location.href = '/';
+        api.post('/auth/logout').finally(() => {
+            window.location.href = '/';
+        });
     };
 
     const updateProfile = async (e) => {
@@ -186,19 +184,19 @@ const Dashboard = () => {
                 <div className="w-full px-4 md:px-8 py-3.5 flex justify-between items-center">
                     <div 
                         className="flex items-center space-x-2 cursor-pointer"
-                        onClick={() => navigate(localStorage.getItem('token') ? '/dashboard' : '/')}
+                        onClick={() => navigate('/dashboard')}
                     >
                         <img src={logo} alt="RProfile.ai Logo" className="w-8.5 h-8.5 rounded-lg" />
                         <span className="text-xl font-black text-[#1E3A8A] tracking-tight font-serif">RProfile<span className="text-blue-500">.ai</span></span>
                     </div>
                     <div className="flex items-center space-x-5">
-                        <button 
+                        {/* <button 
                             onClick={() => navigate('/')}
                             className="flex items-center space-x-1.5 text-slate-500 hover:text-[#1E3A8A] text-sm font-semibold transition"
                         >
                             <HomeIcon className="w-4 h-4" />
                             <span className="hidden sm:inline">Home</span>
-                        </button>
+                        </button> */}
                         {userData && (
                             <button 
                                 onClick={() => setShowProfileModal(true)}

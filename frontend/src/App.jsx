@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import api from './api';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -11,8 +12,16 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem('token');
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+
+  useEffect(() => {
+    api.get('/auth/user')
+      .then(() => setIsAuthenticated(true))
+      .catch(() => setIsAuthenticated(false));
+  }, []);
+
+  if (isAuthenticated === null) return null;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
 function App() {

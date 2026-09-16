@@ -10,7 +10,7 @@ describe('Auth Middleware', () => {
 
     beforeEach(() => {
         req = {
-            header: jest.fn()
+            cookies: {}
         };
         res = {
             status: jest.fn().mockReturnThis(),
@@ -25,18 +25,17 @@ describe('Auth Middleware', () => {
     });
 
     it('should return 401 if no token is provided', () => {
-        req.header.mockReturnValue(null);
+        req.cookies = {};
 
         authMiddleware(req, res, next);
 
-        expect(req.header).toHaveBeenCalledWith('x-auth-token');
         expect(res.status).toHaveBeenCalledWith(401);
         expect(res.json).toHaveBeenCalledWith({ msg: 'No token, authorization denied' });
         expect(next).not.toHaveBeenCalled();
     });
 
     it('should return 401 if token verification fails', () => {
-        req.header.mockReturnValue('invalid-token');
+        req.cookies.auth_token = 'invalid-token';
         jwt.verify.mockImplementation(() => {
             throw new Error('jwt expired');
         });
@@ -52,7 +51,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should call next and set req.user if token is valid', () => {
-        req.header.mockReturnValue('valid-token');
+        req.cookies.auth_token = 'valid-token';
         const mockUser = { id: 'user123' };
         jwt.verify.mockReturnValue({ user: mockUser });
 
@@ -64,7 +63,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should throw error if JWT_SECRET environment variable is missing', () => {
-        req.header.mockReturnValue('valid-token');
+        req.cookies.auth_token = 'valid-token';
         delete process.env.JWT_SECRET;
 
         authMiddleware(req, res, next);

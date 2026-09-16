@@ -91,8 +91,6 @@ const AptitudeRound = () => {
     const completeAptitudeRound = async () => {
         setAptitudeStatus('loading');
         try {
-            const token = localStorage.getItem('token');
-            
             // Calculate results
             const results = aptitudeQuestions.map((q, i) => ({
                 ...q,
