@@ -67,6 +67,12 @@ router.post('/signup', async (req, res) => {
         res.json({ msg: 'OTP sent to email. Please verify.' });
     } catch (err) {
         console.error('Signup failed:', err);
+        if (err.code === 'EMAIL_CONFIG_MISSING') {
+            return res.status(503).json({ msg: 'Email service is not configured on the server.' });
+        }
+        if (err.code === 'EAUTH' || err.responseCode === 535) {
+            return res.status(503).json({ msg: 'Email service credentials were rejected by the provider.' });
+        }
         res.status(500).json({ msg: 'Unable to send verification email. Please try again later.' });
     }
 });

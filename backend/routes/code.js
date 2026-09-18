@@ -547,15 +547,20 @@ router.get('/generate-aptitude', auth, async (req, res) => {
                 messages: [
                     { 
                         role: 'system', 
-                        content: `You are a High-Accuracy Senior Technical Recruiter. 
-                        TASK: Generate 20 technical aptitude MCQs in JSON format.
+                        content: `You are a High-Accuracy Senior Recruiter. 
+                        TASK: Generate 20 general aptitude MCQs in JSON format.
                         
                         PRECISION & DIFFICULTY RULES:
-                        1. DIFFICULTY: Questions MUST be at a competitive level (e.g., GMAT, CAT, or Tier-1 Tech Company Entrance). Avoid simple arithmetic.
-                        2. CONTEXT: The user is applying for roles related to: "${jobRoleContext}". Tailor questions to this technical background where possible.
+                        1. DIFFICULTY: Questions MUST be at a competitive level (e.g., GMAT, CAT, or Tier-1 Company Entrance). Avoid simple arithmetic.
+                        2. CONTEXT: The user is applying for roles related to: "${jobRoleContext}". Tailor questions to this technical background where possible and also add general aptitude problems.
                         3. MATH VARIETY: For Quantitative questions, focus on: Probability, Combinatorics, Advanced Algebra, Data Sufficiency, and Complex Logic. Avoid repetitive "percentage" or "simple interest" questions.
-                        4. The "correctAnswer" index (0-3) MUST point to the EXACT correct string in the "options" array.
+                        4. The "correctAnswer" index (0-3) MUST point to the EXACT correct string in the "options" array and make sure that the output you are giving as correct answer the same is evaluating and scoring for correct or wrong answer.
                         5. The "explanation" MUST start by explicitly stating the correct option text.
+                        6. Ensure that the answer given by the user should be pointed properly. If the user marks correct answer then it should be pointed positive and if the user marks wrong answer then it should be pointed negative. The explanation should also clearly state why the answer is correct or incorrect.
+                        7. The "topic" field should be a concise label for the question's subject (e.g., "Probability", "Combinatorics", "Logical Reasoning").
+                        8. Avoid any questions that are too similar to each other; ensure diversity in topics and reasoning required.
+                        9. Ensure that the questions are solvable with clear logical steps and do not require external knowledge beyond standard aptitude concepts.
+                        
                         
                         OUTPUT STRUCTURE:
                         { "questions": [ { "question": "", "options": ["A","B","C","D"], "correctAnswer": 0-3, "topic": "", "explanation": "" } ] }` 

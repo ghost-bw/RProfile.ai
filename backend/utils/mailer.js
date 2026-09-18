@@ -1,17 +1,37 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
-});
+class MailerError extends Error {
+    constructor(message, code, cause) {
+        super(message);
+        this.name = 'MailerError';
+        this.code = code;
+        this.cause = cause;
+    }
+}
+
+const getTransporter = () => {
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+
+    if (!user || !pass) {
+        throw new MailerError('EMAIL_USER and EMAIL_PASS must be configured', 'EMAIL_CONFIG_MISSING');
+    }
+
+    const port = Number(process.env.EMAIL_PORT || 465);
+    const secure = process.env.EMAIL_SECURE
+        ? process.env.EMAIL_SECURE === 'true'
+        : port === 465;
+
+    return nodemailer.createTransport({
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        port,
+        secure,
+        auth: { user, pass },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000
+    });
+};
 
 const sendOTP = async (email, otp) => {
     const mailOptions = {
@@ -29,12 +49,21 @@ const sendOTP = async (email, otp) => {
               </div>`
     };
 
+    let transporter;
     try {
+        transporter = getTransporter();
         await transporter.sendMail(mailOptions);
         console.log(`OTP sent to ${email}`);
     } catch (err) {
-        console.error('Error sending email:', err);
-        throw new Error('Failed to send OTP email');
+        console.error('Error sending OTP email:', {
+            code: err.code,
+            responseCode: err.responseCode,
+            message: err.message
+        });
+        if (err instanceof MailerError) throw err;
+        throw new MailerError('Failed to send OTP email', 'EMAIL_SEND_FAILED', err);
+    } finally {
+        transporter?.close();
     }
 };
 

@@ -103,7 +103,9 @@ const Login = () => {
         } catch (err) {
             console.error('API ERROR:', err);
             let detailedError = 'Something went wrong. Please try again.';
-            if (err.response) {
+            if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+                detailedError = 'The server took too long to respond. Please try again in a moment.';
+            } else if (err.response) {
                 detailedError = err.response.data?.msg || err.response.data?.error || `Server Error: ${err.response.status}`;
             }
             setError(detailedError);
