@@ -188,6 +188,10 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ msg: 'Invalid Credentials' });
         }
 
+        if (!user.isVerified) {
+            return res.status(403).json({ msg: 'Please verify your email before logging in.' });
+        }
+
 // Signing JWT token...
         const payload = {
             user: {

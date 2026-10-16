@@ -28,7 +28,9 @@ https://<your-render-service>.onrender.com/health
 https://<your-app>.vercel.app,https://<your-preview>.vercel.app
 ```
 
-Use origins only, without a trailing path or `/api`.
+Only list frontend origins you trust, without a trailing path or `/api`. CORS uses exact origin matching; Render, Amplify, and other hosting-provider domains are not trusted automatically. Localhost origins are enabled only when `NODE_ENV` is not `production`.
+
+For production Docker Compose deployments, set `FRONTEND_URL` in the environment before starting the stack. The production configuration intentionally has no localhost default.
 
 Required backend variables:
 
@@ -55,6 +57,8 @@ ELEVENLABS_API_KEY
 ELEVENLABS_VOICE_ID
 ELEVENLABS_MODEL_ID
 ```
+
+Interview voice input records audio in the browser and sends it to the backend for transcription with Groq's `whisper-large-v3-turbo`. It uses the backend `GROQ_API_KEY`; recordings are limited to 24 MB. The transcription is added to the answer field after the user stops recording.
 
 ## 3. Deploy the frontend to Vercel
 

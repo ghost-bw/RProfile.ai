@@ -1,12 +1,38 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
 const auth = require('../middleware/auth');
 const Session = require('../models/Session');
 const Resume = require('../models/Resume');
 const UserProgress = require('../models/UserProgress');
 const { generateEmbedding } = require('../utils/embeddings');
 const { queryResumeChunks } = require('../utils/pinecone');
+
+const MAX_AUDIO_SIZE = 24 * 1000 * 1000;
+const audioUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_AUDIO_SIZE },
+    fileFilter: (req, file, callback) => {
+        if (!file.mimetype.startsWith('audio/')) {
+            return callback(new Error('Upload a supported audio recording.'));
+        }
+        callback(null, true);
+    }
+}).single('audio');
+
+const handleAudioUpload = (req, res, next) => {
+    audioUpload(req, res, err => {
+        if (!err) return next();
+
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ error: 'Audio recording exceeds the 24 MB limit. Record a shorter answer and try again.' });
+        }
+
+        return res.status(400).json({ error: err.message || 'Unable to process audio recording.' });
+    });
+};
 
 // Helper for Groq API
 const callGroq = async (systemPrompt, userPrompt) => {
@@ -201,6 +227,71 @@ router.post('/answer', auth, async (req, res) => {
     } catch (err) {
         console.error('INTERVIEW ANSWER ERROR:', err.message);
         res.status(500).json({ error: 'Server error during interview processing' });
+    }
+});
+
+// @route   POST api/interview/transcribe
+// @desc    Transcribe a recorded interview answer with Groq Whisper
+router.post('/transcribe', auth, handleAudioUpload, async (req, res) => {
+    if (!process.env.GROQ_API_KEY) {
+        return res.status(503).json({ error: 'Speech transcription is not configured on the server.' });
+    }
+    if (!req.file) {
+        return res.status(400).json({ error: 'Record an audio answer before requesting transcription.' });
+    }
+
+    try {
+        const form = new FormData();
+        const extensionByType = {
+            'audio/webm': 'webm',
+            'audio/ogg': 'ogg',
+            'audio/mp4': 'mp4',
+            'audio/mpeg': 'mp3',
+            'audio/wav': 'wav',
+            'audio/x-wav': 'wav'
+        };
+        const mimeType = req.file.mimetype.split(';')[0].toLowerCase();
+        const extension = extensionByType[mimeType];
+        if (!extension) {
+            return res.status(400).json({ error: 'Unsupported audio format. Please record in WebM, OGG, MP4, MP3, or WAV.' });
+        }
+
+        form.append('file', req.file.buffer, {
+            filename: `interview-answer.${extension}`,
+            contentType: mimeType
+        });
+        form.append('model', 'whisper-large-v3-turbo');
+        form.append('language', 'en');
+        form.append('response_format', 'json');
+        form.append('temperature', '0');
+
+        const response = await axios.post(
+            'https://api.groq.com/openai/v1/audio/transcriptions',
+            form,
+            {
+                headers: {
+                    ...form.getHeaders(),
+                    Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+                },
+                maxBodyLength: MAX_AUDIO_SIZE + 1024 * 1024,
+                timeout: 120000
+            }
+        );
+
+        const transcript = response.data?.text?.trim();
+        if (!transcript) {
+            return res.status(502).json({ error: 'Groq did not return a transcript. Please try recording again.' });
+        }
+
+        res.json({ text: transcript });
+    } catch (err) {
+        const providerError = err.response?.data?.error?.message || err.response?.data?.error;
+        console.error('GROQ TRANSCRIPTION ERROR:', providerError || err.message);
+        res.status(502).json({
+            error: typeof providerError === 'string'
+                ? `Speech transcription failed: ${providerError}`
+                : 'Speech transcription failed. Please try again.'
+        });
     }
 });
 

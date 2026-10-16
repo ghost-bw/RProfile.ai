@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-    BarChart, Bar, Legend
+    BarChart, Bar
 } from 'recharts';
 import { Award, TrendingUp, Target, Zap, BookOpen, ChevronRight, RefreshCcw, ArrowLeft, BrainCircuit, Download, FileText, Terminal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -316,15 +315,53 @@ const AnalyticsDashboard = () => {
                     {/* Topic Mastery */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                         <h3 className="text-base font-bold mb-4 text-slate-855">Topic Mastery Breakdown</h3>
-                        <div className="h-72">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                                    <PolarGrid stroke="#F1F5F9" />
-                                    <PolarAngleAxis dataKey="topic" stroke="#64748B" fontSize={10} />
-                                    <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#94A3B8" fontSize={9} />
-                                    <Radar name="Score" dataKey="score" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.4} />
-                                </RadarChart>
-                            </ResponsiveContainer>
+                        <div className="h-72 overflow-y-auto pr-2">
+                            {radarData.length > 0 ? (
+                                <div style={{ height: `${Math.max(288, radarData.length * 40)}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            data={radarData}
+                                            layout="vertical"
+                                            margin={{ top: 4, right: 16, bottom: 4, left: 4 }}
+                                        >
+                                            <CartesianGrid horizontal={false} stroke="#F1F5F9" />
+                                            <XAxis
+                                                type="number"
+                                                domain={[0, 10]}
+                                                tickCount={6}
+                                                tick={{ fill: '#94A3B8', fontSize: 10 }}
+                                                axisLine={false}
+                                                tickLine={false}
+                                            />
+                                            <YAxis
+                                                type="category"
+                                                dataKey="topic"
+                                                width={120}
+                                                interval={0}
+                                                tickFormatter={(topic) => topic.length > 18 ? `${topic.slice(0, 17)}…` : topic}
+                                                tick={{ fill: '#64748B', fontSize: 10 }}
+                                                axisLine={false}
+                                                tickLine={false}
+                                            />
+                                            <Tooltip
+                                                formatter={(value) => [`${value} / 10`, 'Mastery']}
+                                                labelFormatter={(topic) => topic}
+                                            />
+                                            <Bar
+                                                dataKey="score"
+                                                name="Mastery"
+                                                fill="#3B82F6"
+                                                radius={[0, 5, 5, 0]}
+                                                maxBarSize={20}
+                                            />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                                    Complete sessions to see topic mastery.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

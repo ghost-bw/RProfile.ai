@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const Session = require('../models/Session');
 const UserProgress = require('../models/UserProgress');
 const Resume = require('../models/Resume');
+const { aggregateTopicPerformance } = require('../utils/topicCategories');
 
 // @route   GET api/analytics/user
 // @desc    Get user performance analytics
@@ -38,22 +39,7 @@ router.get('/user', auth, async (req, res) => {
         }));
 
         // Topic-wise performance
-        const topicPerformance = {};
-        sessions.forEach(s => {
-            if (s.topicLabels && s.scores) {
-                s.topicLabels.forEach((topic, idx) => {
-                    if (!topicPerformance[topic]) {
-                        topicPerformance[topic] = { totalScore: 0, count: 0 };
-                    }
-                    topicPerformance[topic].totalScore += s.scores[idx] || 0;
-                    topicPerformance[topic].count += 1;
-                });
-            }
-        });
-
-        Object.keys(topicPerformance).forEach(topic => {
-            topicPerformance[topic] = topicPerformance[topic].totalScore / topicPerformance[topic].count;
-        });
+        const topicPerformance = aggregateTopicPerformance(sessions);
 
         // Weakness Heatmap (Topics with low scores)
         const weaknessHeatmap = Object.keys(topicPerformance)

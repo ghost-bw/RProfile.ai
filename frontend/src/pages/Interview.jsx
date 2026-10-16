@@ -11,12 +11,18 @@ const Interview = () => {
     const [chat, setChat] = useState([]);
     const [evaluating, setEvaluating] = useState(false);
     const [isListening, setIsListening] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [voiceError, setVoiceError] = useState('');
     const [error, setError] = useState(null);
     const [timer, setTimer] = useState(0);
     const [timerActive, setTimerActive] = useState(false);
     const [ttsEnabled, setTtsEnabled] = useState(true);
     const navigate = useNavigate();
-    const recognitionRef = useRef(null);
+    const mediaRecorderRef = useRef(null);
+    const mediaStreamRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const recordedBytesRef = useRef(0);
+    const isMountedRef = useRef(false);
     const timerIntervalRef = useRef(null);
     const chatEndRef = useRef(null);
     const ttsEnabledRef = useRef(ttsEnabled);
@@ -41,11 +47,17 @@ const Interview = () => {
 
     // Warm up speech synthesis voices on mount
     useEffect(() => {
+        isMountedRef.current = true;
         if ('speechSynthesis' in window) {
             window.speechSynthesis.getVoices();
         }
         return () => {
+            isMountedRef.current = false;
             stopAllSpeech();
+            if (mediaRecorderRef.current?.state !== 'inactive') {
+                mediaRecorderRef.current?.stop();
+            }
+            mediaStreamRef.current?.getTracks().forEach(track => track.stop());
         };
     }, []);
 
@@ -190,50 +202,119 @@ const Interview = () => {
         };
         fetchSession();
 
-        // Initialize Speech Recognition
-        if ('webkitSpeechRecognition' in window) {
-            const recognition = new window.webkitSpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'en-US';
+    }, [sessionId]);
 
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        setAnswer(prev => prev + event.results[i][0].transcript);
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
+    const startRecording = async () => {
+        setVoiceError('');
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+            setVoiceError('Audio recording is not supported in this browser. Please type your answer instead.');
+            return;
+        }
+
+        let stream;
+        try {
+            stopAllSpeech();
+            stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+            mediaStreamRef.current = stream;
+
+            const mimeType = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/ogg;codecs=opus',
+                'audio/mp4'
+            ].find(type => MediaRecorder.isTypeSupported(type));
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+            mediaRecorderRef.current = recorder;
+            audioChunksRef.current = [];
+            recordedBytesRef.current = 0;
+
+            recorder.ondataavailable = event => {
+                if (!event.data.size) return;
+                audioChunksRef.current.push(event.data);
+                recordedBytesRef.current += event.data.size;
+
+                if (recordedBytesRef.current > 24 * 1000 * 1000) {
+                    setVoiceError('Recording exceeded the 24 MB limit. Please record a shorter answer.');
+                    recorder.stop();
                 }
             };
 
-            recognition.onerror = (event) => {
-                console.error('Speech recognition error', event.error);
+            recorder.onerror = () => {
+                setVoiceError('Audio recording failed. Please try again or type your answer.');
                 setIsListening(false);
             };
 
-            recognition.onend = () => {
+            recorder.onstop = async () => {
+                if (!isMountedRef.current) {
+                    mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+                    mediaStreamRef.current = null;
+                    return;
+                }
                 setIsListening(false);
+                mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+                mediaStreamRef.current = null;
+
+                if (recordedBytesRef.current > 24 * 1000 * 1000) return;
+                const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+                audioChunksRef.current = [];
+                if (!audioBlob.size) {
+                    setVoiceError('No audio was recorded. Check your microphone and try again.');
+                    return;
+                }
+
+                setIsTranscribing(true);
+                try {
+                    const extension = recorder.mimeType.includes('ogg') ? 'ogg'
+                        : recorder.mimeType.includes('mp4') ? 'mp4'
+                            : 'webm';
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, `interview-answer.${extension}`);
+                    const response = await api.post('/interview/transcribe', formData, {
+                        timeout: 120000
+                    });
+                    const transcript = response.data?.text?.trim();
+                    if (!transcript) {
+                        throw new Error('No speech was detected. Please try again or type your answer.');
+                    }
+
+                    setAnswer(previous => `${previous}${previous && !/\s$/.test(previous) ? ' ' : ''}${transcript}`);
+                } catch (err) {
+                    setVoiceError(err.response?.data?.error || err.message || 'Transcription failed. Please try again.');
+                } finally {
+                    setIsTranscribing(false);
+                    mediaRecorderRef.current = null;
+                }
             };
 
-            recognitionRef.current = recognition;
+            recorder.start(1000);
+            setIsListening(true);
+        } catch (err) {
+            stream?.getTracks().forEach(track => track.stop());
+            mediaStreamRef.current = null;
+            setVoiceError(
+                err.name === 'NotAllowedError'
+                    ? 'Microphone access was denied. Allow microphone access and try again.'
+                    : err.message || 'Could not start audio recording.'
+            );
         }
-    }, [sessionId]);
+    };
 
     const toggleListening = () => {
         if (isListening) {
-            recognitionRef.current.stop();
-        } else {
-            stopAllSpeech();
-            recognitionRef.current.start();
-            setIsListening(true);
+            mediaRecorderRef.current?.stop();
+        } else if (!isTranscribing) {
+            void startRecording();
         }
     };
 
     const handleSend = async () => {
-        if (!answer.trim()) return;
-        if (isListening) recognitionRef.current.stop();
+        if (!answer.trim() || isListening || isTranscribing) return;
         stopAllSpeech(); // Stop talking when the user sends their answer
         stopTimer();
 
@@ -389,9 +470,13 @@ const Interview = () => {
                             disabled={evaluating}
                         />
                         <button
+                            type="button"
                             onClick={toggleListening}
+                            disabled={isTranscribing || evaluating}
+                            aria-label={isListening ? 'Stop recording and transcribe' : 'Record answer'}
+                            title={isListening ? 'Stop recording and transcribe' : 'Record answer'}
                             className={`absolute right-3 bottom-3 p-2 rounded-full transition ${
-                                isListening ? 'bg-red-500/15 text-red-400 animate-bounce' : 'text-white/60 hover:bg-white/5'
+                                isListening ? 'bg-red-500/15 text-red-400 animate-pulse' : 'text-white/60 hover:bg-white/5'
                             }`}
                         >
                             {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -399,15 +484,24 @@ const Interview = () => {
                     </div>
                     <button
                         onClick={handleSend}
-                        disabled={evaluating || !answer.trim()}
+                        disabled={evaluating || isListening || isTranscribing || !answer.trim()}
                         className="bg-[#F472B6] hover:bg-[#EC4899] text-white p-4 rounded-2xl transition disabled:opacity-50 shadow-md"
                     >
                         <Send className="w-6 h-6" />
                     </button>
                 </div>
                 <p className="text-center text-xs text-white/40 mt-2">
-                    Press the microphone to speak. Your voice will be transcribed in real-time.
+                    {isListening
+                        ? 'Recording your answer... Press the microphone again to stop and transcribe.'
+                        : isTranscribing
+                            ? 'Transcribing your answer with Groq Whisper...'
+                            : 'Press the microphone to record. Your answer will be transcribed when you stop.'}
                 </p>
+                {voiceError && (
+                    <p className="max-w-4xl mx-auto mt-2 text-sm text-red-400 text-center" role="alert">
+                        {voiceError}
+                    </p>
+                )}
             </div>
         </div>
     );

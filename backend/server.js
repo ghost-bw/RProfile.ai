@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const { getAllowedOrigins, isAllowedOrigin } = require('./utils/cors');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -23,50 +24,12 @@ server.on('error', (err) => {
     process.exit(1);
 });
 
-// CORS configuration - allow local development, AWS, Render, and custom domain origins
-const normalizeOrigin = (value) => {
-    if (!value) return [];
-    return value
-        .split(',')
-        .map(v => v.trim())
-        .map(v => {
-            try {
-                return new URL(v).origin;
-            } catch (error) {
-                return v.replace(/\/+$/, '');
-            }
-        })
-        .filter(Boolean);
-};
-
-const allowedOrigins = [
-    ...normalizeOrigin(process.env.FRONTEND_URL),
-    ...normalizeOrigin(process.env.VITE_API_URI),
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173'
-].filter(Boolean);
-
-const isCloudOrigin = (origin) => {
-    if (!origin) return false;
-    return (
-        /^(https:\/\/.*\.onrender\.com)$/i.test(origin) ||
-        /^(https:\/\/.*\.amplifyapp\.com)$/i.test(origin) ||
-        /^(https:\/\/.*\.elasticbeanstalk\.com)$/i.test(origin) ||
-        /^(https:\/\/.*\.awsapp\.com)$/i.test(origin)
-    );
-};
+// CORS allows exact configured frontend origins, plus localhost during development.
+const allowedOrigins = getAllowedOrigins();
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (
-            !origin ||
-            allowedOrigins.includes(origin) ||
-            isCloudOrigin(origin) ||
-            origin.startsWith('http://localhost:') ||
-            origin.startsWith('http://127.0.0.1:')
-        ) {
+        if (isAllowedOrigin(origin, allowedOrigins)) {
             callback(null, true);
         } else {
             callback(new Error(`CORS blocked for origin: ${origin}`));
@@ -118,4 +81,3 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
     res.send('AI Interview Copilot API is running...');
 });
-
