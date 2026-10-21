@@ -55,7 +55,7 @@ const Home = () => {
             formRef.current.reset();
         } catch (error) {
             console.error(error);
-            alert("Failed to send message. Please try again or email us directly at support@rprofile.ai");
+            alert("Failed to send message. Please try again or email us directly at raunakprabhakar25@gmail.com");
         } finally {
             setIsSending(false);
         }
@@ -296,7 +296,7 @@ const Home = () => {
                                     </div>
                                     <div className="text-left">
                                         <p className="text-[10px] md:text-sm font-bold text-gray-400 uppercase tracking-widest">Email Us</p>
-                                        <p className="text-base md:text-lg font-black text-[#1E3A8A]">support@rprofile.ai</p>
+                                        <p className="text-base md:text-lg font-black text-[#1E3A8A]">raunakprabhakar25@gmail.com</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center space-x-4 bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100">

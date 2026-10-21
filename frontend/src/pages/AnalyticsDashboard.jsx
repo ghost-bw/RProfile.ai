@@ -165,7 +165,7 @@ const AnalyticsDashboard = () => {
                         <div className="bg-[#1E3A8A] p-1.5 rounded-lg">
                             <Award className="text-white w-4.5 h-4.5" />
                         </div>
-                        <span className="text-xl font-black text-[#1E3A8A] tracking-tight font-serif">ResumePro<span className="text-blue-500">.ai</span></span>
+                        <span className="text-xl font-black text-[#1E3A8A] tracking-tight font-serif">RProfile.ai<span className="text-blue-500">.ai</span></span>
                     </div>
                     <button onClick={() => navigate('/dashboard')} className="flex items-center space-x-1.5 text-slate-500 hover:text-[#1E3A8A] text-sm font-semibold transition">
                         <ArrowLeft className="w-4 h-4" />
